@@ -203,6 +203,15 @@ CREATE SCHEMA [etl]
 
 
 GO
+PRINT N'Creating [audit]...';
+
+
+GO
+CREATE SCHEMA [audit]
+    AUTHORIZATION [dbo];
+
+
+GO
 PRINT N'Creating [stage].[EDWAttribute]...';
 
 
@@ -215,7 +224,7 @@ CREATE TABLE [stage].[EDWAttribute] (
     [Order]              SMALLINT       NULL,
     [IsStagingOnly]      BIT            NOT NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL
+    [LastChangeUserName] NVARCHAR (128) NULL
 );
 
 
@@ -233,7 +242,7 @@ CREATE TABLE [stage].[EDWEntity] (
     [PartitioningTypeId] CHAR (1)       NOT NULL,
     [CreateEntity]       BIT            NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL
+    [LastChangeUserName] NVARCHAR (128) NULL
 );
 
 
@@ -249,7 +258,7 @@ CREATE TABLE [stage].[DataType] (
     [Precision]          INT            NULL,
     [Scale]              INT            NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL
+    [LastChangeUserName] NVARCHAR (128) NULL
 );
 
 
@@ -262,7 +271,7 @@ CREATE TABLE [stage].[EntityType] (
     [EntityTypeId]       VARCHAR (4)    NOT NULL,
     [EntityTypeName]     VARCHAR (50)   NOT NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL
+    [LastChangeUserName] NVARCHAR (128) NULL
 );
 
 
@@ -275,7 +284,7 @@ CREATE TABLE [stage].[StorageType] (
     [StorageTypeId]      VARCHAR (3)    NOT NULL,
     [StorageTypeName]    VARCHAR (50)   NOT NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL
+    [LastChangeUserName] NVARCHAR (128) NULL
 );
 
 
@@ -290,7 +299,7 @@ CREATE TABLE [stage].[EDWEntityRelationship] (
     [UsedBy]               INT            NOT NULL,
     [HashKeySuffix]        VARCHAR (50)   NULL,
     [LastUpdateTime]       DATETIME2 (7)  NULL,
-    [LastChangeUserName]   NVARCHAR (100) NULL
+    [LastChangeUserName]   NVARCHAR (128) NULL
 );
 
 
@@ -303,7 +312,7 @@ CREATE TABLE [stage].[PartitioningType] (
     [PartitioningTypeId]   CHAR (1)       NOT NULL,
     [PartitioningTypeName] VARCHAR (50)   NOT NULL,
     [LastUpdateTime]       DATETIME2 (7)  NULL,
-    [LastChangeUserName]   NVARCHAR (100) NULL
+    [LastChangeUserName]   NVARCHAR (128) NULL
 );
 
 
@@ -317,7 +326,7 @@ CREATE TABLE [stage].[ProcessEntityRelationship] (
     [ProcessId]                   INT            NOT NULL,
     [EntityId]                    INT            NOT NULL,
     [LastUpdateTime]              DATETIME2 (7)  NULL,
-    [LastChangeUserName]          NVARCHAR (100) NULL
+    [LastChangeUserName]          NVARCHAR (128) NULL
 );
 
 
@@ -330,7 +339,7 @@ CREATE TABLE [stage].[SourceSystemType] (
     [SourceSystemTypeId]   VARCHAR (3)    NOT NULL,
     [SourceSystemTypeName] VARCHAR (50)   NOT NULL,
     [LastUpdateTime]       DATETIME2 (7)  NULL,
-    [LastChangeUserName]   NVARCHAR (100) NULL
+    [LastChangeUserName]   NVARCHAR (128) NULL
 );
 
 
@@ -343,7 +352,7 @@ CREATE TABLE [stage].[ProcessType] (
     [ProcessTypeId]      VARCHAR (3)    NOT NULL,
     [ProcessTypeName]    VARCHAR (50)   NOT NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL
+    [LastChangeUserName] NVARCHAR (128) NULL
 );
 
 
@@ -361,7 +370,7 @@ CREATE TABLE [stage].[Process] (
     [ContactInfo]        VARCHAR (255)  NULL,
     [SupportGroup]       VARCHAR (255)  NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL
+    [LastChangeUserName] NVARCHAR (128) NULL
 );
 
 
@@ -378,7 +387,7 @@ CREATE TABLE [meta].[EDWAttribute] (
     [Order]              SMALLINT       NULL,
     [IsStagingOnly]      BIT            NOT NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL,
+    [LastChangeUserName] NVARCHAR (128) NULL,
     CONSTRAINT [PK_EDWAttribute] PRIMARY KEY CLUSTERED ([AttributeId] ASC)
 );
 
@@ -397,7 +406,7 @@ CREATE TABLE [meta].[EDWEntity] (
     [PartitioningTypeId] CHAR (1)       NOT NULL,
     [CreateEntity]       BIT            NOT NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL,
+    [LastChangeUserName] NVARCHAR (128) NULL,
     CONSTRAINT [PK_EDWEntity] PRIMARY KEY CLUSTERED ([EntityId] ASC)
 );
 
@@ -423,7 +432,7 @@ CREATE TABLE [meta].[DataType] (
     [Precision]          INT            NULL,
     [Scale]              INT            NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL,
+    [LastChangeUserName] NVARCHAR (128) NULL,
     CONSTRAINT [PK_DataType] PRIMARY KEY CLUSTERED ([DataTypeId] ASC)
 );
 
@@ -437,7 +446,7 @@ CREATE TABLE [meta].[EntityType] (
     [EntityTypeId]       VARCHAR (4)    NOT NULL,
     [EntityTypeName]     VARCHAR (50)   NOT NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL,
+    [LastChangeUserName] NVARCHAR (128) NULL,
     CONSTRAINT [PK_EntityType] PRIMARY KEY CLUSTERED ([EntityTypeId] ASC)
 );
 
@@ -451,7 +460,7 @@ CREATE TABLE [meta].[StorageType] (
     [StorageTypeId]      VARCHAR (3)    NOT NULL,
     [StorageTypeName]    VARCHAR (50)   NOT NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL,
+    [LastChangeUserName] NVARCHAR (128) NULL,
     CONSTRAINT [PK_StorageType] PRIMARY KEY CLUSTERED ([StorageTypeId] ASC)
 );
 
@@ -502,7 +511,7 @@ CREATE TABLE [meta].[EDWEntityRelationship] (
     [UsedBy]               INT            NOT NULL,
     [HashKeySuffix]        VARCHAR (50)   NULL,
     [LastUpdateTime]       DATETIME2 (7)  NULL,
-    [LastChangeUserName]   NVARCHAR (100) NULL,
+    [LastChangeUserName]   NVARCHAR (128) NULL,
     CONSTRAINT [PK_EDWEntityRelationship] PRIMARY KEY CLUSTERED ([EntityRelationshipId] ASC)
 );
 
@@ -525,7 +534,7 @@ CREATE TABLE [meta].[PartitioningType] (
     [PartitioningTypeId]   CHAR (1)       NOT NULL,
     [PartitioningTypeName] VARCHAR (50)   NOT NULL,
     [LastUpdateTime]       DATETIME2 (7)  NULL,
-    [LastChangeUserName]   NVARCHAR (100) NULL,
+    [LastChangeUserName]   NVARCHAR (128) NULL,
     CONSTRAINT [PK_PartitioningType] PRIMARY KEY CLUSTERED ([PartitioningTypeId] ASC)
 );
 
@@ -540,7 +549,7 @@ CREATE TABLE [meta].[ProcessEntityRelationship] (
     [ProcessId]                   INT            NOT NULL,
     [EntityId]                    INT            NOT NULL,
     [LastUpdateTime]              DATETIME2 (7)  NULL,
-    [LastChangeUserName]          NVARCHAR (100) NULL,
+    [LastChangeUserName]          NVARCHAR (128) NULL,
     CONSTRAINT [PK_ProcessEntityRelationship] PRIMARY KEY CLUSTERED ([ProcessEntityRelationshipId] ASC)
 );
 
@@ -559,7 +568,7 @@ CREATE TABLE [meta].[Process] (
     [ContactInfo]        VARCHAR (255)  NULL,
     [SupportGroup]       VARCHAR (255)  NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL,
+    [LastChangeUserName] NVARCHAR (128) NULL,
     CONSTRAINT [PK_Process] PRIMARY KEY CLUSTERED ([ProcessId] ASC)
 );
 
@@ -582,7 +591,7 @@ CREATE TABLE [meta].[SourceSystemType] (
     [SourceSystemTypeId]   VARCHAR (3)    NOT NULL,
     [SourceSystemTypeName] VARCHAR (50)   NOT NULL,
     [LastUpdateTime]       DATETIME2 (7)  NULL,
-    [LastChangeUserName]   NVARCHAR (100) NULL,
+    [LastChangeUserName]   NVARCHAR (128) NULL,
     CONSTRAINT [PK_SourceSystemType] PRIMARY KEY CLUSTERED ([SourceSystemTypeId] ASC)
 );
 
@@ -596,8 +605,114 @@ CREATE TABLE [meta].[ProcessType] (
     [ProcessTypeId]      VARCHAR (3)    NOT NULL,
     [ProcessTypeName]    VARCHAR (50)   NOT NULL,
     [LastUpdateTime]     DATETIME2 (7)  NULL,
-    [LastChangeUserName] NVARCHAR (100) NULL,
+    [LastChangeUserName] NVARCHAR (128) NULL,
     CONSTRAINT [PK_ProcessType] PRIMARY KEY CLUSTERED ([ProcessTypeId] ASC)
+);
+
+
+GO
+PRINT N'Creating [audit].[EDWEntity]...';
+
+
+GO
+CREATE TABLE [audit].[EDWEntity] (
+    [LoadDate]           DATETIME2 (7)  NOT NULL,
+    [EntityId]           INT            NOT NULL,
+    [EntityName]         VARCHAR (50)   NULL,
+    [EntityDescription]  VARCHAR (255)  NULL,
+    [EntityTypeId]       VARCHAR (4)    NULL,
+    [StorageTypeId]      VARCHAR (3)    NULL,
+    [PartitioningTypeId] CHAR (1)       NULL,
+    [CreateEntity]       BIT            NULL,
+    [UserName]           NVARCHAR (128) NULL,
+    [Operation]          CHAR (6)       NOT NULL,
+    CONSTRAINT [PK_EDWEntity] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [EntityId] ASC)
+);
+
+
+GO
+PRINT N'Creating [audit].[Configuration]...';
+
+
+GO
+CREATE TABLE [audit].[Configuration] (
+    [LoadDate]  DATETIME2 (7)  NOT NULL,
+    [Id]        VARCHAR (50)   NOT NULL,
+    [Value]     VARCHAR (50)   NULL,
+    [UserName]  NVARCHAR (128) NULL,
+    [Operation] CHAR (6)       NOT NULL
+);
+
+
+GO
+PRINT N'Creating [audit].[EDWAttribute]...';
+
+
+GO
+CREATE TABLE [audit].[EDWAttribute] (
+    [LoadDate]      DATETIME2 (7)  NOT NULL,
+    [AttributeId]   INT            NOT NULL,
+    [AttributeName] VARCHAR (50)   NULL,
+    [EDWEntityId]   INT            NULL,
+    [DataTypeId]    INT            NULL,
+    [Order]         SMALLINT       NULL,
+    [IsStagingOnly] BIT            NULL,
+    [UserName]      NVARCHAR (128) NULL,
+    [Operation]     CHAR (6)       NOT NULL,
+    CONSTRAINT [PK_EDWAttribute] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [AttributeId] ASC)
+);
+
+
+GO
+PRINT N'Creating [audit].[EDWEntityRelationship]...';
+
+
+GO
+CREATE TABLE [audit].[EDWEntityRelationship] (
+    [LoadDate]             DATETIME2 (7)  NOT NULL,
+    [EntityRelationshipId] INT            NOT NULL,
+    [HubLnk]               INT            NULL,
+    [UsedBy]               INT            NULL,
+    [HashKeySuffix]        VARCHAR (50)   NULL,
+    [UserName]             NVARCHAR (128) NULL,
+    [Operation]            CHAR (6)       NOT NULL,
+    CONSTRAINT [PK_EDWEntityRelationship] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [EntityRelationshipId] ASC)
+);
+
+
+GO
+PRINT N'Creating [audit].[Process]...';
+
+
+GO
+CREATE TABLE [audit].[Process] (
+    [LoadDate]           DATETIME2 (7)  NOT NULL,
+    [ProcessId]          INT            NOT NULL,
+    [ProcessName]        VARCHAR (50)   NULL,
+    [ProcessDescription] VARCHAR (255)  NULL,
+    [ProcessTypeId]      VARCHAR (3)    NULL,
+    [SourceSystemTypeId] VARCHAR (3)    NULL,
+    [ContactInfo]        VARCHAR (255)  NULL,
+    [SupportGroup]       VARCHAR (255)  NULL,
+    [UserName]           NVARCHAR (100) NULL,
+    [Operation]          CHAR (6)       NOT NULL,
+    CONSTRAINT [PK_Process] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [ProcessId] ASC)
+);
+
+
+GO
+PRINT N'Creating [audit].[ProcessEntityRelationship]...';
+
+
+GO
+CREATE TABLE [audit].[ProcessEntityRelationship] (
+    [LoadDate]                    DATETIME2 (7)  NOT NULL,
+    [ProcessEntityRelationshipId] INT            NOT NULL,
+    [ProcessId]                   INT            NULL,
+    [EntityId]                    INT            NULL,
+    [UserName]                    NVARCHAR (128) NULL,
+    [Operation]                   CHAR (6)       NOT NULL,
+    CONSTRAINT [PK_ProcessEntityRelationship] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [ProcessEntityRelationshipId] ASC)
 );
 
 
@@ -607,16 +722,7 @@ PRINT N'Creating [meta].[DF_EDWEntity_CreateEntity]...';
 
 GO
 ALTER TABLE [meta].[EDWEntity]
-    ADD CONSTRAINT [DF_EDWEntity_CreateEntity] DEFAULT (1) FOR [CreateEntity];
-
-
-GO
-PRINT N'Creating [meta].[FK_EDWAttribute_EDWEntity]...';
-
-
-GO
-ALTER TABLE [meta].[EDWAttribute]
-    ADD CONSTRAINT [FK_EDWAttribute_EDWEntity] FOREIGN KEY ([EDWEntityId]) REFERENCES [meta].[EDWEntity] ([EntityId]);
+    ADD CONSTRAINT [DF_EDWEntity_CreateEntity] DEFAULT ((1)) FOR [CreateEntity];
 
 
 GO
@@ -629,6 +735,15 @@ ALTER TABLE [meta].[EDWAttribute]
 
 
 GO
+PRINT N'Creating [meta].[FK_EDWAttribute_EDWEntity]...';
+
+
+GO
+ALTER TABLE [meta].[EDWAttribute]
+    ADD CONSTRAINT [FK_EDWAttribute_EDWEntity] FOREIGN KEY ([EDWEntityId]) REFERENCES [meta].[EDWEntity] ([EntityId]);
+
+
+GO
 PRINT N'Creating [meta].[FK_EDWEntity_EntityType]...';
 
 
@@ -638,21 +753,21 @@ ALTER TABLE [meta].[EDWEntity]
 
 
 GO
-PRINT N'Creating [meta].[FK_EDWEntity_StorageType]...';
-
-
-GO
-ALTER TABLE [meta].[EDWEntity]
-    ADD CONSTRAINT [FK_EDWEntity_StorageType] FOREIGN KEY ([StorageTypeId]) REFERENCES [meta].[StorageType] ([StorageTypeId]);
-
-
-GO
 PRINT N'Creating [meta].[FK_EDWEntity_PartitioningType]...';
 
 
 GO
 ALTER TABLE [meta].[EDWEntity]
     ADD CONSTRAINT [FK_EDWEntity_PartitioningType] FOREIGN KEY ([PartitioningTypeId]) REFERENCES [meta].[PartitioningType] ([PartitioningTypeId]);
+
+
+GO
+PRINT N'Creating [meta].[FK_EDWEntity_StorageType]...';
+
+
+GO
+ALTER TABLE [meta].[EDWEntity]
+    ADD CONSTRAINT [FK_EDWEntity_StorageType] FOREIGN KEY ([StorageTypeId]) REFERENCES [meta].[StorageType] ([StorageTypeId]);
 
 
 GO
@@ -674,21 +789,21 @@ ALTER TABLE [meta].[EDWEntityRelationship]
 
 
 GO
-PRINT N'Creating [meta].[FK_ProcessEntityRelationship_ProcessId_Process]...';
-
-
-GO
-ALTER TABLE [meta].[ProcessEntityRelationship]
-    ADD CONSTRAINT [FK_ProcessEntityRelationship_ProcessId_Process] FOREIGN KEY ([ProcessId]) REFERENCES [meta].[Process] ([ProcessId]);
-
-
-GO
 PRINT N'Creating [meta].[FK_ProcessEntityRelationship_EntityId_EDWEntity]...';
 
 
 GO
 ALTER TABLE [meta].[ProcessEntityRelationship]
     ADD CONSTRAINT [FK_ProcessEntityRelationship_EntityId_EDWEntity] FOREIGN KEY ([EntityId]) REFERENCES [meta].[EDWEntity] ([EntityId]);
+
+
+GO
+PRINT N'Creating [meta].[FK_ProcessEntityRelationship_ProcessId_Process]...';
+
+
+GO
+ALTER TABLE [meta].[ProcessEntityRelationship]
+    ADD CONSTRAINT [FK_ProcessEntityRelationship_ProcessId_Process] FOREIGN KEY ([ProcessId]) REFERENCES [meta].[Process] ([ProcessId]);
 
 
 GO
@@ -709,6 +824,492 @@ ALTER TABLE [meta].[Process]
     ADD CONSTRAINT [FK_Process_SourceSystemType] FOREIGN KEY ([SourceSystemTypeId]) REFERENCES [meta].[SourceSystemType] ([SourceSystemTypeId]);
 
 
+GO
+PRINT N'Creating [meta].[EDWAttribute_audit]...';
+
+
+GO
+CREATE TRIGGER [meta].[EDWAttribute_audit]
+ON [meta].[EDWAttribute]
+AFTER INSERT, DELETE, UPDATE
+AS 
+BEGIN
+	SET NOCOUNT ON;
+
+  INSERT INTO [audit].[EDWAttribute] (
+    [LoadDate]
+    ,[AttributeId]
+    ,[AttributeName]
+    ,[EDWEntityId]
+    ,[DataTypeId]
+    ,[Order]
+    ,[IsStagingOnly]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[AttributeId]
+    ,[AttributeName]
+    ,[EDWEntityId]
+    ,[DataTypeId]
+    ,[Order]
+    ,[IsStagingOnly]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'INSERT'
+  FROM inserted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM deleted d
+    WHERE i.[AttributeId] = d.[AttributeId]);
+
+  INSERT INTO [audit].[EDWAttribute] (
+    [LoadDate]
+    ,[AttributeId]
+    ,[AttributeName]
+    ,[EDWEntityId]
+    ,[DataTypeId]
+    ,[Order]
+    ,[IsStagingOnly]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[AttributeId]
+    ,[AttributeName]
+    ,[EDWEntityId]
+    ,[DataTypeId]
+    ,[Order]
+    ,[IsStagingOnly]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'DELETE'
+  FROM deleted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM inserted d
+    WHERE i.[AttributeId] = d.[AttributeId]);
+
+  INSERT INTO [audit].[EDWAttribute] (
+    [LoadDate]
+    ,[AttributeId]
+    ,[AttributeName]
+    ,[EDWEntityId]
+    ,[DataTypeId]
+    ,[Order]
+    ,[IsStagingOnly]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,i.[AttributeId]
+    ,i.[AttributeName]
+    ,i.[EDWEntityId]
+    ,i.[DataTypeId]
+    ,i.[Order]
+    ,i.[IsStagingOnly]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'UPDATE'
+  FROM inserted i
+    INNER JOIN deleted d ON i.[AttributeId] = d.[AttributeId];
+
+END
+GO
+PRINT N'Creating [meta].[EDWEntity_audit]...';
+
+
+GO
+CREATE TRIGGER [meta].[EDWEntity_audit]
+ON [meta].[EDWEntity]
+AFTER INSERT, DELETE, UPDATE
+AS 
+BEGIN
+	SET NOCOUNT ON;
+
+  INSERT INTO [audit].[EDWEntity] (
+    [LoadDate]
+    ,[EntityId]
+    ,[EntityName]
+    ,[EntityDescription]
+    ,[EntityTypeId]
+    ,[StorageTypeId]
+    ,[PartitioningTypeId]
+    ,[CreateEntity]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[EntityId]
+    ,[EntityName]
+    ,[EntityDescription]
+    ,[EntityTypeId]
+    ,[StorageTypeId]
+    ,[PartitioningTypeId]
+    ,[CreateEntity]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'INSERT'
+  FROM inserted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM deleted d
+    WHERE i.EntityId = d.EntityId);
+
+  INSERT INTO [audit].[EDWEntity] (
+    [LoadDate]
+    ,[EntityId]
+    ,[EntityName]
+    ,[EntityDescription]
+    ,[EntityTypeId]
+    ,[StorageTypeId]
+    ,[PartitioningTypeId]
+    ,[CreateEntity]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[EntityId]
+    ,[EntityName]
+    ,[EntityDescription]
+    ,[EntityTypeId]
+    ,[StorageTypeId]
+    ,[PartitioningTypeId]
+    ,[CreateEntity]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'DELETE'
+  FROM deleted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM inserted d
+    WHERE i.EntityId = d.EntityId);
+
+  INSERT INTO [audit].[EDWEntity] (
+    [LoadDate]
+    ,[EntityId]
+    ,[EntityName]
+    ,[EntityDescription]
+    ,[EntityTypeId]
+    ,[StorageTypeId]
+    ,[PartitioningTypeId]
+    ,[CreateEntity]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,i.[EntityId]
+    ,i.[EntityName]
+    ,i.[EntityDescription]
+    ,i.[EntityTypeId]
+    ,i.[StorageTypeId]
+    ,i.[PartitioningTypeId]
+    ,i.[CreateEntity]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'UPDATE'
+  FROM inserted i
+    INNER JOIN deleted d ON i.EntityId = d.EntityId;
+
+END
+GO
+PRINT N'Creating [meta].[Configuration_audit]...';
+
+
+GO
+CREATE TRIGGER [meta].[Configuration_audit]
+ON [meta].[Configuration]
+AFTER INSERT, DELETE, UPDATE
+AS 
+BEGIN
+	SET NOCOUNT ON;
+
+  INSERT INTO [audit].[Configuration] (
+    [LoadDate]
+    ,[Id]
+    ,[Value]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[Id]
+    ,[Value]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'INSERT'
+  FROM inserted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM deleted d
+    WHERE i.[Id] = d.[Id]);
+
+  INSERT INTO [audit].[Configuration] (
+    [LoadDate]
+    ,[Id]
+    ,[Value]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[Id]
+    ,[Value]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'DELETE'
+  FROM deleted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM inserted d
+    WHERE i.[Id] = d.[Id]);
+
+  INSERT INTO [audit].[Configuration] (
+    [LoadDate]
+    ,[Id]
+    ,[Value]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,i.[Id]
+    ,i.[Value]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'UPDATE'
+  FROM inserted i
+    INNER JOIN deleted d ON i.[Id] = d.[Id];
+
+END
+GO
+PRINT N'Creating [meta].[EDWEntityRelationship_audit]...';
+
+
+GO
+CREATE TRIGGER [meta].[EDWEntityRelationship_audit]
+ON [meta].[EDWEntityRelationship]
+AFTER INSERT, DELETE, UPDATE
+AS 
+BEGIN
+	SET NOCOUNT ON;
+
+  INSERT INTO [audit].[EDWEntityRelationship] (
+    [LoadDate]
+    ,[EntityRelationshipId]
+    ,[HubLnk]
+    ,[UsedBy]
+    ,[HashKeySuffix]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[EntityRelationshipId]
+    ,[HubLnk]
+    ,[UsedBy]
+    ,[HashKeySuffix]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'INSERT'
+  FROM inserted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM deleted d
+    WHERE i.[EntityRelationshipId] = d.[EntityRelationshipId]);
+
+  INSERT INTO [audit].[EDWEntityRelationship] (
+    [LoadDate]
+    ,[EntityRelationshipId]
+    ,[HubLnk]
+    ,[UsedBy]
+    ,[HashKeySuffix]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[EntityRelationshipId]
+    ,[HubLnk]
+    ,[UsedBy]
+    ,[HashKeySuffix]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'DELETE'
+  FROM deleted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM inserted d
+    WHERE i.[EntityRelationshipId] = d.[EntityRelationshipId]);
+
+  INSERT INTO [audit].[EDWEntityRelationship] (
+    [LoadDate]
+    ,[EntityRelationshipId]
+    ,[HubLnk]
+    ,[UsedBy]
+    ,[HashKeySuffix]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,i.[EntityRelationshipId]
+    ,i.[HubLnk]
+    ,i.[UsedBy]
+    ,i.[HashKeySuffix]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'UPDATE'
+  FROM inserted i
+    INNER JOIN deleted d ON i.[EntityRelationshipId] = d.[EntityRelationshipId];
+
+END
+GO
+PRINT N'Creating [meta].[ProcessEntityRelationship_audit]...';
+
+
+GO
+CREATE TRIGGER [meta].[ProcessEntityRelationship_audit]
+ON [meta].[ProcessEntityRelationship]
+AFTER INSERT, DELETE, UPDATE
+AS 
+BEGIN
+	SET NOCOUNT ON;
+
+  INSERT INTO [audit].[ProcessEntityRelationship] (
+    [LoadDate]
+    ,[ProcessEntityRelationshipId]
+    ,[ProcessId]
+    ,[EntityId]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[ProcessEntityRelationshipId]
+    ,[ProcessId]
+    ,[EntityId]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'INSERT'
+  FROM inserted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM deleted d
+    WHERE i.[ProcessEntityRelationshipId] = d.[ProcessEntityRelationshipId]);
+
+  INSERT INTO [audit].[ProcessEntityRelationship] (
+    [LoadDate]
+    ,[ProcessEntityRelationshipId]
+    ,[ProcessId]
+    ,[EntityId]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[ProcessEntityRelationshipId]
+    ,[ProcessId]
+    ,[EntityId]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'DELETE'
+  FROM deleted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM inserted d
+    WHERE i.[ProcessEntityRelationshipId] = d.[ProcessEntityRelationshipId]);
+
+  INSERT INTO [audit].[ProcessEntityRelationship] (
+    [LoadDate]
+    ,[ProcessEntityRelationshipId]
+    ,[ProcessId]
+    ,[EntityId]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,i.[ProcessEntityRelationshipId]
+    ,i.[ProcessId]
+    ,i.[EntityId]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'UPDATE'
+  FROM inserted i
+    INNER JOIN deleted d ON i.[ProcessEntityRelationshipId] = d.[ProcessEntityRelationshipId];
+
+END
+GO
+PRINT N'Creating [meta].[Process_audit]...';
+
+
+GO
+CREATE TRIGGER [meta].[Process_audit]
+ON [meta].[Process]
+AFTER INSERT, DELETE, UPDATE
+AS 
+BEGIN
+	SET NOCOUNT ON;
+
+  INSERT INTO [audit].[Process] (
+    [LoadDate]
+    ,[ProcessId]
+    ,[ProcessName]
+    ,[ProcessDescription]
+    ,[ProcessTypeId]
+    ,[SourceSystemTypeId]
+    ,[ContactInfo]
+    ,[SupportGroup]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[ProcessId]
+    ,[ProcessName]
+    ,[ProcessDescription]
+    ,[ProcessTypeId]
+    ,[SourceSystemTypeId]
+    ,[ContactInfo]
+    ,[SupportGroup]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'INSERT'
+  FROM inserted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM deleted d
+    WHERE i.[ProcessId] = d.[ProcessId]);
+
+  INSERT INTO [audit].[Process] (
+    [LoadDate]
+    ,[ProcessId]
+    ,[ProcessName]
+    ,[ProcessDescription]
+    ,[ProcessTypeId]
+    ,[SourceSystemTypeId]
+    ,[ContactInfo]
+    ,[SupportGroup]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[ProcessId]
+    ,[ProcessName]
+    ,[ProcessDescription]
+    ,[ProcessTypeId]
+    ,[SourceSystemTypeId]
+    ,[ContactInfo]
+    ,[SupportGroup]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'DELETE'
+  FROM deleted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM inserted d
+    WHERE i.[ProcessId] = d.[ProcessId]);
+
+  INSERT INTO [audit].[Process] (
+    [LoadDate]
+    ,[ProcessId]
+    ,[ProcessName]
+    ,[ProcessDescription]
+    ,[ProcessTypeId]
+    ,[SourceSystemTypeId]
+    ,[ContactInfo]
+    ,[SupportGroup]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,i.[ProcessId]
+    ,i.[ProcessName]
+    ,i.[ProcessDescription]
+    ,i.[ProcessTypeId]
+    ,i.[SourceSystemTypeId]
+    ,i.[ContactInfo]
+    ,i.[SupportGroup]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'UPDATE'
+  FROM inserted i
+    INNER JOIN deleted d ON i.[ProcessId] = d.[ProcessId];
+
+END
 GO
 PRINT N'Creating [dbo].[Rand]...';
 
@@ -2088,7 +2689,7 @@ IF EXISTS
     AND TABLE_SCHEMA = ''#objectschema#''
     AND TABLE_NAME = ''#objectname#''
 )
-  DROP TABLE #objectschema#.#objectname#;
+  DROP TABLE [#objectschema#].[#objectname#];
 '
 
 IF @ObjectType IN ('VIEW')
@@ -2101,7 +2702,7 @@ IF EXISTS
     AND TABLE_SCHEMA = ''#objectschema#''
     AND TABLE_NAME = ''#objectname#''
 )
-  DROP VIEW #objectschema#.#objectname#;
+  DROP VIEW [#objectschema#].[#objectname#];
 '
 
 IF @ObjectType IN ('PROCEDURE', 'PROC', 'STORED PROCEDURE')
@@ -2114,7 +2715,7 @@ IF EXISTS
     AND ROUTINE_SCHEMA = ''#objectschema#''
     AND ROUTINE_NAME = ''#objectname#''
 )
-  DROP PROCEDURE #objectschema#.#objectname#;
+  DROP PROCEDURE [#objectschema#].[#objectname#];
 '
 
 IF @ObjectType IN ('FUNCTION', 'FUNC')
@@ -2127,7 +2728,7 @@ IF EXISTS
     AND ROUTINE_SCHEMA = ''#objectschema#''
     AND ROUTINE_NAME = ''#objectname#''
 )
-  DROP FUNCTION #objectschema#.#objectname#;
+  DROP FUNCTION [#objectschema#].[#objectname#];
 '
 
 IF @ObjectType IN ('PARTITION FUNCTION', 'PF')
@@ -2138,7 +2739,7 @@ IF EXISTS
   FROM sys.partition_functions 
   WHERE name = ''#objectname#''
 )
-  DROP PARTITION FUNCTION #objectname#;
+  DROP PARTITION FUNCTION [#objectname#];
 '
 
 IF @ObjectType IN ('PARTITION SCHEME', 'PS')
@@ -2149,7 +2750,7 @@ IF EXISTS
   FROM sys.partition_schemes 
   WHERE name = ''#objectname#''
 )
-  DROP PARTITION SCHEME #objectname#;
+  DROP PARTITION SCHEME [#objectname#];
 '
 
 IF @Sql IS NOT NULL
@@ -6597,7 +7198,7 @@ CREATE TABLE [#DataType]
   [Precision] INT NULL,
   [Scale] INT NULL,
   [LastUpdateTime] DATETIME2 NOT NULL, 
-  [LastChangeUserName] NVARCHAR(100) NULL
+  [LastChangeUserName] NVARCHAR(128) NULL
 );
 
 INSERT INTO [#DataType]
@@ -6692,7 +7293,7 @@ CREATE TABLE [#EntityType]
   [EntityTypeId] VARCHAR(4) NOT NULL, 
   [EntityTypeName] VARCHAR(50) NOT NULL, 
   [LastUpdateTime] DATETIME2 NOT NULL, 
-  [LastChangeUserName] NVARCHAR(100) NULL
+  [LastChangeUserName] NVARCHAR(128) NULL
 );
 
 INSERT INTO [#EntityType]
@@ -6726,7 +7327,7 @@ CREATE TABLE [#PartitioningType]
   [PartitioningTypeId] CHAR(1) NOT NULL, 
   [PartitioningTypeName] VARCHAR(50) NOT NULL, 
   [LastUpdateTime] DATETIME2 NOT NULL, 
-  [LastChangeUserName] NVARCHAR(100) NULL
+  [LastChangeUserName] NVARCHAR(128) NULL
 );
 
 INSERT INTO [#PartitioningType]
@@ -6756,7 +7357,7 @@ CREATE TABLE [#ProcessType]
   [ProcessTypeId] VARCHAR(3) NOT NULL, 
   [ProcessTypeName] VARCHAR(50) NOT NULL, 
   [LastUpdateTime] DATETIME2 NOT NULL, 
-  [LastChangeUserName] NVARCHAR(100) NULL
+  [LastChangeUserName] NVARCHAR(128) NULL
 );
 
 INSERT INTO [#ProcessType]
@@ -6784,7 +7385,7 @@ CREATE TABLE [#SourceSystemType]
   [SourceSystemTypeId] VARCHAR(3) NOT NULL, 
   [SourceSystemTypeName] VARCHAR(50) NOT NULL, 
   [LastUpdateTime] DATETIME2 NOT NULL, 
-  [LastChangeUserName] NVARCHAR(100) NULL
+  [LastChangeUserName] NVARCHAR(128) NULL
 );
 
 INSERT INTO [#SourceSystemType]
@@ -6818,7 +7419,7 @@ CREATE TABLE [#StorageType]
   [StorageTypeId] VARCHAR(3) NOT NULL, 
   [StorageTypeName] VARCHAR(50) NOT NULL, 
   [LastUpdateTime] DATETIME2 NOT NULL, 
-  [LastChangeUserName] NVARCHAR(100) NULL
+  [LastChangeUserName] NVARCHAR(128) NULL
 );
 
 INSERT INTO [#StorageType]

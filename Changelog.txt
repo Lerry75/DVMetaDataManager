@@ -1,0 +1,12 @@
+Vault Meta Data Manager Changelog
+*********************************
+
+1.1.0.1 (2018-07-02)
+  Database module:
+    - NEW: Audit trail added for table in DVMeta.
+           Using Tags, it is also possible to restore settings to original
+           or a specific point-in-time state.
+    - NEW: Fully template-based scripts.
+           All the db entities' generation SQL scripts (tables, indexes, views, procedures, etc.)
+           are now exposed in DVMeta database. People can potentially
+           modified them to fit specific needs.

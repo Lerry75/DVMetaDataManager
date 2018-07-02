@@ -390,6 +390,21 @@ CREATE TABLE [stage].[Process] (
 
 
 GO
+PRINT N'Creating [stage].[Template]...';
+
+
+GO
+CREATE TABLE [stage].[Template] (
+    [TemplateId]          VARCHAR (50)   NOT NULL,
+    [TemplateDescription] VARCHAR (255)  NULL,
+    [TemplateAttribute]   VARCHAR (20)   NOT NULL,
+    [TemplateText]        NVARCHAR (MAX) NOT NULL,
+    [LastUpdateTime]      DATETIME2 (7)  NULL,
+    [LastChangeUserName]  NVARCHAR (128) NULL
+);
+
+
+GO
 PRINT N'Creating [meta].[EDWAttribute]...';
 
 
@@ -626,6 +641,38 @@ CREATE TABLE [meta].[ProcessType] (
 
 
 GO
+PRINT N'Creating [meta].[Template]...';
+
+
+GO
+CREATE TABLE [meta].[Template] (
+    [TemplateId]          VARCHAR (50)   NOT NULL,
+    [TemplateDescription] VARCHAR (255)  NULL,
+    [TemplateAttribute]   VARCHAR (20)   NOT NULL,
+    [TemplateText]        NVARCHAR (MAX) NOT NULL,
+    [LastUpdateTime]      DATETIME2 (7)  NULL,
+    [LastChangeUserName]  NVARCHAR (128) NULL,
+    CONSTRAINT [PK_Template] PRIMARY KEY CLUSTERED ([TemplateId] ASC)
+);
+
+
+GO
+PRINT N'Creating [audit].[ProcessEntityRelationship]...';
+
+
+GO
+CREATE TABLE [audit].[ProcessEntityRelationship] (
+    [LoadDate]                    DATETIME2 (7)  NOT NULL,
+    [ProcessEntityRelationshipId] INT            NOT NULL,
+    [ProcessId]                   INT            NULL,
+    [EntityId]                    INT            NULL,
+    [UserName]                    NVARCHAR (128) NULL,
+    [Operation]                   CHAR (6)       NOT NULL,
+    CONSTRAINT [PK_ProcessEntityRelationship] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [ProcessEntityRelationshipId] ASC)
+);
+
+
+GO
 PRINT N'Creating [audit].[EDWEntity]...';
 
 
@@ -642,6 +689,23 @@ CREATE TABLE [audit].[EDWEntity] (
     [UserName]           NVARCHAR (128) NULL,
     [Operation]          CHAR (6)       NOT NULL,
     CONSTRAINT [PK_EDWEntity] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [EntityId] ASC)
+);
+
+
+GO
+PRINT N'Creating [audit].[Template]...';
+
+
+GO
+CREATE TABLE [audit].[Template] (
+    [LoadDate]            DATETIME2 (7)  NOT NULL,
+    [TemplateId]          VARCHAR (50)   NOT NULL,
+    [TemplateDescription] VARCHAR (255)  NULL,
+    [TemplateAttribute]   VARCHAR (20)   NOT NULL,
+    [TemplateText]        NVARCHAR (MAX) NOT NULL,
+    [UserName]            NVARCHAR (128) NULL,
+    [Operation]           CHAR (6)       NOT NULL,
+    CONSTRAINT [PK_Template] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [TemplateId] ASC)
 );
 
 
@@ -725,22 +789,6 @@ CREATE TABLE [audit].[Process] (
     [UserName]           NVARCHAR (100) NULL,
     [Operation]          CHAR (6)       NOT NULL,
     CONSTRAINT [PK_Process] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [ProcessId] ASC)
-);
-
-
-GO
-PRINT N'Creating [audit].[ProcessEntityRelationship]...';
-
-
-GO
-CREATE TABLE [audit].[ProcessEntityRelationship] (
-    [LoadDate]                    DATETIME2 (7)  NOT NULL,
-    [ProcessEntityRelationshipId] INT            NOT NULL,
-    [ProcessId]                   INT            NULL,
-    [EntityId]                    INT            NULL,
-    [UserName]                    NVARCHAR (128) NULL,
-    [Operation]                   CHAR (6)       NOT NULL,
-    CONSTRAINT [PK_ProcessEntityRelationship] PRIMARY KEY CLUSTERED ([LoadDate] ASC, [ProcessEntityRelationshipId] ASC)
 );
 
 
@@ -1339,6 +1387,83 @@ BEGIN
 
 END
 GO
+PRINT N'Creating [meta].[Template_audit]...';
+
+
+GO
+
+CREATE TRIGGER [meta].[Template_audit]
+ON [meta].[Template]
+AFTER INSERT, DELETE, UPDATE
+AS 
+BEGIN
+	SET NOCOUNT ON;
+
+  INSERT INTO [audit].[Template] (
+    [LoadDate]
+    ,[TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[TemplateText]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[TemplateText]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'INSERT'
+  FROM inserted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM deleted d
+    WHERE i.[TemplateId] = d.[TemplateId]);
+
+  INSERT INTO [audit].[Template] (
+    [LoadDate]
+    ,[TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[TemplateText]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,[TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[TemplateText]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'DELETE'
+  FROM deleted i
+  WHERE NOT EXISTS (
+    SELECT *
+    FROM inserted d
+    WHERE i.[TemplateId] = d.[TemplateId]);
+
+  INSERT INTO [audit].[Template] (
+    [LoadDate]
+    ,[TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[TemplateText]
+    ,[UserName]
+    ,[Operation])
+  SELECT 
+    [LoadDate] = SYSUTCDATETIME()
+    ,i.[TemplateId]
+    ,i.[TemplateDescription]
+    ,i.[TemplateAttribute]
+    ,i.[TemplateText]
+    ,[UserName] = CURRENT_USER
+    ,[Operation] = 'UPDATE'
+  FROM inserted i
+    INNER JOIN deleted d ON i.[TemplateId] = d.[TemplateId];
+
+END
+GO
 PRINT N'Creating [dbo].[Rand]...';
 
 
@@ -1747,6 +1872,17 @@ BEGIN
   END;
 END
 GO
+PRINT N'Creating [meta].[DateRangeEnd]...';
+
+
+GO
+CREATE FUNCTION [meta].[DateRangeEnd] ()
+RETURNS CHAR(10)
+AS
+BEGIN
+  RETURN '9999-12-31';
+END
+GO
 PRINT N'Creating [meta].[DateRangeStart]...';
 
 
@@ -2013,15 +2149,18 @@ BEGIN
 	RETURN (SELECT CONVERT(BIT, LTRIM([Value])) FROM meta.[Configuration] WHERE Id = 'DisabledForeignKey');
 END
 GO
-PRINT N'Creating [meta].[DateRangeEnd]...';
+PRINT N'Creating [meta].[TemplateText]...';
 
 
 GO
-CREATE FUNCTION [meta].[DateRangeEnd] ()
-RETURNS CHAR(10)
+CREATE FUNCTION [meta].[TemplateText]
+(
+  @TemplateId VARCHAR(50)
+)
+RETURNS NVARCHAR(MAX)
 AS
 BEGIN
-  RETURN '9999-12-31';
+	RETURN (SELECT [TemplateText] FROM [meta].[Template] WHERE [TemplateId] = @TemplateId);
 END
 GO
 PRINT N'Creating [meta].[EntityKeyColumn]...';
@@ -2655,7 +2794,7 @@ PRINT N'Creating [dbo].[ExecuteOrPrint]...';
 
 GO
 CREATE PROCEDURE [dbo].[ExecuteOrPrint]
-  @Database NVARCHAR(50),
+  @Database NVARCHAR(100),
 	@Sql NVARCHAR(MAX),
 	@PrintOnly BIT = 0
 
@@ -2792,124 +2931,6 @@ BEGIN
 	  ,@PrintOnly;
 END
 GO
-PRINT N'Creating [dbo].[DeleteBatch]...';
-
-
-GO
-CREATE PROCEDURE [dbo].[DeleteBatch]
-  @ProcessId int,
-  @LoadDate varchar(50),
-  @RecordSource varchar(50),
-  @PrintOnly bit = 0
-
-AS
-
-BEGIN
-  SET NOCOUNT ON;
-
-  DECLARE 
-    @Template nvarchar(MAX) = '
-PRINT ''Delete LoadDate ''''#value#'''' from #entity_table_name#...'';
-DELETE FROM #entity_table_name# WHERE #meta_date_column# = ''#value#''#recourd_source_template#;'
-    ,@TemplateRecordSource nvarchar(max) = ' AND RecordSource LIKE ''#record_source#'''
-    ,@TemplateLoadEndDate nvarchar(max) = '
-PRINT ''Update LoadEndDate for #entity_table_name#...'';
-WITH ToBeUpdated AS (
-  SELECT #key_column#
-    ,MAX(LoadEndDate) LoadEndDate
-  FROM #entity_table_name#
-  GROUP BY #key_column#
-  HAVING MAX(LoadEndDate) != ''#date_range_end#''
-)
-UPDATE Tgt
-SET LoadEndDate = ''#date_range_end#''
-FROM #entity_table_name# Tgt
-  JOIN ToBeUpdated on Tgt.#key_column# = ToBeUpdated.#key_column#
-    AND Tgt.LoadEndDate = ToBeUpdated.LoadEndDate;
-'
-    ,@Sql nvarchar(MAX)
-    ,@Database NVARCHAR(50);
-
-  -- ********************************************************
-  -- Delete specified batch
-  -- ********************************************************
-  SET @Sql = (
-    SELECT REPLACE(REPLACE(REPLACE(@Template, '#entity_table_name#', meta.EntityTableName(EntityId)), '#meta_date_column#', CASE WHEN meta.EntityTypeId(EntityId) IN ('Br', 'Pit') THEN '[SnapshotDate]' ELSE '[LoadDate]' END), '#recourd_source_template#', CASE WHEN meta.EntityTypeId(EntityId) IN ('Br', 'Pit') THEN '' ELSE @TemplateRecordSource END)
-    FROM meta.ProcessEntityRelationship
-    WHERE ProcessId = @ProcessId
-    ORDER BY 
-      CASE meta.EntityTypeId(EntityId)
-	      WHEN 'Br' THEN 1
-		    WHEN 'Pit' THEN 2
-        WHEN 'Sat' THEN 3
-	      WHEN 'TSat' THEN 4
-		    WHEN 'RSat' THEN 5
-		    WHEN 'Lnk' THEN 6
-	      ELSE 999
-      END
-    FOR XML PATH('')
-  );
-
-  -- ********************************************************
-  -- Check for missing 'date_range_end' LoadEndDate in Sat
-  -- ********************************************************
-  IF EXISTS (
-    SELECT *
-    FROM meta.ProcessEntityRelationship
-    WHERE ProcessId = @ProcessId
-      AND meta.EntityTypeId(EntityId) = 'Sat'
-  )
-    SET @Sql += (
-      SELECT REPLACE(REPLACE(@TemplateLoadEndDate, '#entity_table_name#', meta.EntityTableName(EntityId)), '#key_column#', meta.EntityKeyColumn(EntityId))
-      FROM meta.ProcessEntityRelationship
-      WHERE ProcessId = @ProcessId
-        AND meta.EntityTypeId(EntityId) = 'Sat'
-      ORDER BY EntityId
-      FOR XML PATH('')
-    );
-
-  SET @Sql += 'PRINT ''Done.'';'
-
-  SET @Sql = REPLACE(@Sql, '#value#', @LoadDate);
-  SET @Sql = REPLACE(@Sql, '#record_source#', @RecordSource);
-  SET @Sql = REPLACE(@Sql, '#date_range_end#', meta.DateRangeEnd());
-  SET @Sql = REPLACE(@Sql, '#printonly#', @PrintOnly);
-  SET @Sql = REPLACE(@Sql, '&#x0D;', '');
-
-  SET @Database = meta.WarehouseDbName();
-  EXEC dbo.ExecuteOrPrint
-    @Database
-	  ,@Sql
-	  ,@PrintOnly;
-
-  -- ********************************************************
-  -- Check consistency for LoadDate and LoadEndDate in Sat
-  -- ********************************************************
---with tst as (
---  select HK_Host
---    ,LoadDate
---    ,LoadEndDate
---    ,LAG(LoadEndDate) over (partition by HK_Host order by loaddate asc) PreviousLoadEndDate
---  from edw.Sat_Host_HPA
---)
---select *
---from tst
---where LoadDate <= PreviousLoadEndDate
-
-
---with tst as (
---  select HK_Host
---    ,LoadDate
---    ,LoadEndDate
---    ,LEAD(LoadDate) over (partition by HK_Host order by loaddate asc) NextLoadDate
---  from edw.Sat_Host_HPA
---)
---select *
---from tst
---where NextLoadDate <= LoadEndDate
-
-END
-GO
 PRINT N'Creating [meta].[CreateModel]...';
 
 
@@ -2941,7 +2962,7 @@ BEGIN
     PRINT '-- *** Validation OK. ***';
 
   DECLARE 
-    @TemplateUtilities nvarchar(MAX) = '
+    @TemplateUtilities NVARCHAR(MAX) = '
 PRINT '''';
 PRINT ''-- *** Deploying databases ***'';
 EXEC meta.DeployDatabases @PrintOnly = #printonly#;
@@ -2959,16 +2980,25 @@ EXEC meta.DeploySchemata @PrintOnly = #printonly#;
 PRINT ''-- *** Deploying utilities ***'';
 EXEC meta.DeployUtilities @PrintOnly = #printonly#;
 '
-    ,@TemplateDropEntities nvarchar(MAX) = '
-PRINT ''-- *** Dropping table #schema#.[#entity_type#_#entity_name#] ***'';
-EXEC [dbo].[DropObject] @Database = ''#edw_db#'', @ObjectSchema = ''#schema#'', @ObjectName = ''[#entity_prefix##entity_type#_#entity_name#]'', @ObjectType = ''TABLE'', @PrintOnly = #printonly#;
-'
-    ,@Template nvarchar(MAX) = '
+    ,@TemplateDropEntities NVARCHAR(MAX) = '
+PRINT ''-- *** Dropping table #schema#.[#entity_type#_#entity_name#] ***'';' + (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
 PRINT ''-- *** Creating items for entity #entityid# - #schema#.[#entity_type#_#entity_name#] ***'';
 EXEC [meta].[CreateAllObjectsForEntity] @EntityId = #entityid#, @PrintOnly = #printonly#;
 '
-    ,@Sql nvarchar(MAX)
+    ,@Sql NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDropEntities = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDropEntities
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#schema#')
+        , '#object_name#', '[#entity_prefix##entity_type#_#entity_name#]')
+      , '#object_type#', 'TABLE'
+    );
 
   SET @Sql = @TemplateUtilities;
 
@@ -3080,25 +3110,24 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop NVARCHAR(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#biz_schema#'', @ObjectName = ''[#entity_type#_#entity_name#]'', @ObjectType = ''TABLE'', @PrintOnly = #printonly#;
-'
-    ,@Template NVARCHAR(MAX) = '
-CREATE TABLE #entity_table_name# (
-  #key_column# #data_type_hash_key# NOT NULL
-  ,#referenced_key_column# #data_type_hash_key# NOT NULL
-  ,[SnapshotDate] [datetime2] NOT NULL
-  ,[SnapshotDateShort] [date] NULL
-#columns#
-) ON #filegroup_data#;
-'
-    ,@TemplateColumns nvarchar(MAX) = '
-  ,[#referenced_entity_name#_#referenced_key_column#] #data_type_hash_key# NOT NULL
-  ,[#referenced_entity_name#_LoadDate] [datetime2] NOT NULL' + CHAR(13) + CHAR(10)
-	  ,@Sql nvarchar(MAX)
-	  ,@Columns nvarchar(MAX)
-	  ,@ReferencedEntityId int
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = (SELECT meta.TemplateText('BizPitTable'))
+    ,@TemplateColumns NVARCHAR(MAX) = (SELECT meta.TemplateText('BizPitTable_column_names'))
+	  ,@Sql NVARCHAR(MAX)
+	  ,@Columns NVARCHAR(MAX)
+	  ,@ReferencedEntityId INT
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#biz_schema#')
+        , '#object_name#', '[#entity_type#_#entity_name#]')
+      , '#object_type#', 'TABLE'
+    );
 
   SELECT @ReferencedEntityId = HubLnk
   FROM meta.EDWEntityRelationship
@@ -3137,7 +3166,7 @@ CREATE TABLE #entity_table_name# (
   SET @Sql = REPLACE(@Template, '#entity_type#', meta.EntityTypeId(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_name#', meta.EntityName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_table_name#', meta.EntityTableName(@EntityId));
-  SET @Sql = REPLACE(@Sql, '#columns#', @Columns);
+  SET @Sql = REPLACE(@Sql, '#column_names#', @Columns);
   SET @Sql = REPLACE(@Sql, '#key_column#', meta.EntityKeyColumn(@EntityId));
   SET @Sql = REPLACE(@Sql, '#referenced_key_column#', meta.EntityKeyColumn(@ReferencedEntityId));
   SET @Sql = REPLACE(@Sql, '#data_type_hash_key#', meta.SqlDataTypeHashKey());
@@ -3174,44 +3203,30 @@ BEGIN
   -- Valid for all entities
   
   DECLARE 
-    @TemplateDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#schema#'', @ObjectName = ''[InitializeEntity_#entity_type#_#entity_name#]'', @ObjectType = ''PROCEDURE'', @PrintOnly = #printonly#;
-'
-    ,@Template nvarchar(MAX) = '
-DECLARE @Stmt nvarchar(MAX) = ''
-CREATE PROCEDURE #schema#.[InitializeEntity_#entity_type#_#entity_name#]
-    @LoadDate DATETIME2
-
-AS
-#body#
-'';   
-
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
+DECLARE @Stmt nvarchar(MAX) = ''#body#'';   
 EXEC sys.sp_executesql @Stmt;
 '
-    ,@Body nvarchar(MAX) = '
-DECLARE @PartitionDate #date_data_type# = #date_value#;
-
-IF NOT EXISTS (
-  SELECT *
-  FROM sys.partition_range_values prv
-    JOIN sys.partition_functions pf ON prv.function_id = pf.function_id
-  WHERE pf.name = ''''#partition_function_no_brackets#''''
-    AND prv.value = @PartitionDate
-)
-BEGIN
-  ALTER PARTITION SCHEME #partition_scheme_data# NEXT USED #filegroup_data#;
-  ALTER PARTITION SCHEME #partition_scheme_index# NEXT USED #filegroup_index#;
-  ALTER PARTITION FUNCTION #partition_function#() SPLIT RANGE (@PartitionDate);
-END
-'
-    ,@Sql nvarchar(MAX)
+    ,@Sql NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#schema#')
+        , '#object_name#', '[InitializeEntity_#entity_type#_#entity_name#]')
+      , '#object_type#', 'PROCEDURE'
+    );
 
   IF meta.EntityTypeId(@EntityId) IN ('Lnk', 'Sat', 'TSat', 'RSat', 'Br', 'Pit') 
     AND meta.PartitioningTypeId(@EntityId) != 'N'
-	  SET @Sql = REPLACE(@Template, '#body#', @Body);
+	  SET @Sql = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('InitializeEntityProc_partitioned'), '''', ''''''));
   ELSE
-    SET @Sql = REPLACE(@Template, '#body#', 'RETURN;');
+    SET @Sql = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('InitializeEntityProc_nonpartitioned'), '''', ''''''));
 
   IF meta.PartitioningTypeId(@EntityId) = 'M'	-- Monthly
     SET @Sql = REPLACE(REPLACE(@Sql, '#date_value#', 'DATETIME2FROMPARTS(YEAR(@LoadDate), MONTH(@LoadDate), DAY(EOMONTH(@LoadDate)), 23, 59, 59, 9999999, 7)'), '#date_data_type#', 'DATETIME2');
@@ -3286,18 +3301,43 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop NVARCHAR(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = '''', @ObjectName = ''#partition_scheme_data#'', @ObjectType = ''PS'', @PrintOnly = #printonly#;
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = '''', @ObjectName = ''#partition_scheme_index#'', @ObjectType = ''PS'', @PrintOnly = #printonly#;
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = '''', @ObjectName = ''#partition_function#'', @ObjectType = ''PF'', @PrintOnly = #printonly#;
-'
-    ,@Template NVARCHAR(MAX) = '
-CREATE PARTITION FUNCTION #partition_function#([datetime2]) AS RANGE LEFT FOR VALUES (''#date_range_start#'');
-CREATE PARTITION SCHEME #partition_scheme_data# AS PARTITION #partition_function# ALL TO (#filegroup_data#);
-CREATE PARTITION SCHEME #partition_scheme_index# AS PARTITION #partition_function# ALL TO (#filegroup_index#);
-'
-	  ,@Sql nvarchar(MAX)
+    @TemplateDrop NVARCHAR(MAX) = ''
+    ,@Template NVARCHAR(MAX) = (SELECT meta.TemplateText('TablePartitioning'))
+	  ,@Sql NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop += 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(meta.TemplateText('DropObject')
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '')
+        , '#object_name#', '#partition_scheme_data#')
+      , '#object_type#', 'PS'
+    );
+
+  SET @TemplateDrop += 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(meta.TemplateText('DropObject')
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '')
+        , '#object_name#', '#partition_scheme_index#')
+      , '#object_type#', 'PS'
+    );
+
+  SET @TemplateDrop += 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(meta.TemplateText('DropObject')
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '')
+        , '#object_name#', '#partition_function#')
+      , '#object_type#', 'PF'
+    );
 
   -- Replace Placeholders
   SET @TemplateDrop = REPLACE(@TemplateDrop, '#meta_db#', meta.MetaDbName());
@@ -3356,100 +3396,47 @@ BEGIN
   EXEC meta.CheckEnvironment;
 
   DECLARE 
-    @TemplateDrop NVARCHAR(MAX) = '
-EXEC dbo.DropObject @Database = ''#db_name#'', @ObjectSchema = ''[dbo]'', @ObjectName = ''[GetHash]'', @ObjectType = ''FUNCTION'', @PrintOnly = #printonly#;
-'
-    ,@TemplateActual NVARCHAR(MAX) = '
-DECLARE @Stmt NVARCHAR(MAX) = ''
-CREATE FUNCTION [dbo].[GetHash]
-(
-	@value NVARCHAR(MAX)
-)
-RETURNS #data_type#
-AS
-BEGIN
-	RETURN CONVERT(#data_type#, HASHBYTES(''''#hash_algorithm#'''', UPPER(@value)), 2)
-END
-'';
-
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
+DECLARE @Stmt NVARCHAR(MAX) = ''#body#'';
 EXEC sys.sp_executesql @Stmt;
 
 '
-    ,@TemplateLegacy NVARCHAR(MAX) = '
-DECLARE @Stmt NVARCHAR(MAX) = ''
-CREATE FUNCTION [dbo].[GetHash]
-(
-	@value VARCHAR(8000)
-)
-RETURNS #data_type#
-AS
-BEGIN
-	RETURN CONVERT(#data_type#, HASHBYTES(''''#hash_algorithm#'''', UPPER(@value)), 2)
-END
-'';
-
-EXEC sys.sp_executesql @Stmt;
-
-'
-    ,@TemplateGhostRecordProcDrop NVARCHAR(MAX) = '
-EXEC dbo.DropObject @Database = ''#db_name#'', @ObjectSchema = ''[dbo]'', @ObjectName = ''[InsertGhostRecords]'', @ObjectType = ''PROCEDURE'', @PrintOnly = #printonly#;
-'
-    ,@TemplateGhostRecordProc NVARCHAR(MAX) = '
-DECLARE @Stmt NVARCHAR(MAX) = ''
-CREATE PROCEDURE [dbo].[InsertGhostRecords]
-  @Force bit = 0
-
-AS
-
-SET NOCOUNT ON;
-
-DECLARE 
-  @TemplateInsert nvarchar(MAX) = ''''
-EXEC #schema#.#ghost_insert_proc_name#;
-''''
-  ,@TemplateDelete nvarchar(MAX) = ''''
-EXEC #schema#.#ghost_delete_proc_name#;
-''''
-  ,@Sql nvarchar(MAX);
-
-SET @Sql = (
-  SELECT REPLACE(REPLACE(@TemplateInsert, ''''#schema#'''', SCHEMA_NAME(schema_id)), ''''#ghost_insert_proc_name#'''', [name])
-  FROM sys.objects
-  WHERE [type] = ''''P''''
-    AND [name] LIKE ''''GhostRecordInsert%''''
-  ORDER BY [name]
-  FOR XML PATH('''''''')
-)
-
-IF @Force = 1
-  SET @Sql = (
-    SELECT REPLACE(REPLACE(@TemplateDelete, ''''#schema#'''', SCHEMA_NAME(schema_id)), ''''#ghost_delete_proc_name#'''', [name])
-    FROM sys.objects
-    WHERE [type] = ''''P''''
-      AND [name] LIKE ''''GhostRecordDelete%''''
-    ORDER BY [name] DESC
-    FOR XML PATH('''''''')
-  )
-	+ @Sql;
-
-SET @Sql = REPLACE(@Sql, ''''&#x0D;'''', '''''''');
-
-IF (@Sql IS NOT NULL)
-    EXEC sys.sp_executesql @Sql;
-'';
-
-EXEC sys.sp_executesql @Stmt;
-
-'
+    ,@TemplateGhostRecordProcDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
 	  ,@Sql NVARCHAR(MAX)
     ,@SqlDrop NVARCHAR(MAX)
-    ,@Template NVARCHAR(MAX)
+    ,@TemplateGetHash NVARCHAR(MAX)
+    ,@TemplateGhostRecordProc NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
 
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#db_name#')
+          , '#schema#', '[dbo]')
+        , '#object_name#', '[GetHash]')
+      , '#object_type#', 'FUNCTION'
+    );
+
+  SET @TemplateGhostRecordProcDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateGhostRecordProcDrop
+            , '#db_name#', '#db_name#')
+          , '#schema#', '[dbo]')
+        , '#object_name#', '[InsertGhostRecords]')
+      , '#object_type#', 'PROCEDURE'
+    );
+
   IF meta.LegacyNonUnicodeInputForHash() = 0
-    SET @Template = @TemplateActual;
+    SET @TemplateGetHash = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('Utilities_get_hash_actual'), '''', ''''''));
   ELSE
-    SET @Template = @TemplateLegacy;
+    SET @TemplateGetHash = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('Utilities_get_hash_legacy'), '''', ''''''));
+
+  SET @TemplateGhostRecordProc = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('Utilities_insert_ghost_records'), '''', ''''''));
 
   -- Replace Placeholders for Staging database (GetHash)
   SET @SqlDrop = REPLACE(@TemplateDrop, '#db_name#', meta.StagingDbName());
@@ -3461,7 +3448,7 @@ EXEC sys.sp_executesql @Stmt;
 	  ,@SqlDrop
 	  ,@PrintOnly;
 
-  SET @Sql = REPLACE(@Template, '#data_type#', meta.SqlDataTypeHashKey());
+  SET @Sql = REPLACE(@TemplateGetHash, '#data_type_hash_key#', meta.SqlDataTypeHashKey());
   SET @Sql = REPLACE(@Sql, '#hash_algorithm#', meta.HashAlgorithm());
   SET @Sql = REPLACE(@Sql, '#printonly#', @PrintOnly);
   
@@ -3481,7 +3468,7 @@ EXEC sys.sp_executesql @Stmt;
 	  ,@SqlDrop
 	  ,@PrintOnly;
 
-  SET @Sql = REPLACE(@Template, '#data_type#', meta.SqlDataTypeHashKey());
+  SET @Sql = REPLACE(@TemplateGetHash, '#data_type_hash_key#', meta.SqlDataTypeHashKey());
   SET @Sql = REPLACE(@Sql, '#hash_algorithm#', meta.HashAlgorithm());
   SET @Sql = REPLACE(@Sql, '#printonly#', @PrintOnly);
 
@@ -3536,40 +3523,20 @@ BEGIN
 	  RETURN;
   END
 
-  DECLARE @Sql nvarchar(MAX) = ''
-    ,@Columns nvarchar(MAX) = ''
-	  ,@FKs nvarchar(MAX) = ''
+  DECLARE @Sql NVARCHAR(MAX) = ''
+    ,@Columns NVARCHAR(MAX) = ''
+	  ,@FKs NVARCHAR(MAX) = ''
     ,@Database NVARCHAR(50);
 
   -- ColumnStore and RowStore
   IF meta.StorageTypeId(@EntityId) = 'CR'
   BEGIN
     DECLARE 
-      @TemplateHubLnk nvarchar(MAX) = '
-CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
-CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_index#;
-CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#columns#) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateSat nvarchar(MAX) = '
-CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
-CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
-CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadEndDate] ON #entity_table_name# (LoadEndDate, #key_column#) INCLUDE (HashDiff) WITH (#index_options#) ON #filegroup_index#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC, [LoadDate] ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateTSat nvarchar(MAX) = '
-CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
-CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate], #key_column#) WITH (#index_options#) ON #filegroup_data#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC, [LoadDate] ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateForeignKey nvarchar(MAX) = '
-ALTER TABLE #entity_table_name# WITH #fk_check# ADD CONSTRAINT [FK_#entity_type#_#entity_name#_#referenced_entity_type#_#referenced_entity_name##suffix#] FOREIGN KEY (#reference_key_column#) REFERENCES #referenced_entity_table_name# (#referenced_key_column#);
-'
-      ,@TemplateCheck nvarchar(MAX) = '
-ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadDate] CHECK (([LoadDate] <= [LoadEndDate]));
-ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadEndDate] DEFAULT (''#date_range_end#'') FOR [LoadEndDate];
-'
-      ,@IndexOptions nvarchar(MAX);
+      @TemplateHubLnk NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesColumnRowStore_hub_link'))
+      ,@TemplateSat NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesColumnRowStore_sat'))
+      ,@TemplateTSat NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesColumnRowStore_tsat'))
+      ,@TemplateForeignKey NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesColumnRowStore_fk'))
+      ,@IndexOptions NVARCHAR(MAX);
 
     -- Objects for HUB
     IF meta.EntityTypeId(@EntityId) = 'Hub'
@@ -3674,8 +3641,8 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
                     ), '#referenced_entity_name#', meta.EntityName(HubLnk)
                   ), '#referenced_entity_table_name#', meta.EntityTableName(HubLnk)
                 ), '#referenced_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumn(HubLnk) ELSE CONCAT(meta.EntityKeyColumn(HubLnk), ', [LoadDate]') END
-              ), '#reference_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)) ELSE CONCAT(meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)), ', [LoadDate]') END
-            ), '#suffix#', meta.CleanSuffix(HashKeySuffix)
+              ), '#referencing_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)) ELSE CONCAT(meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)), ', [LoadDate]') END
+            ), '#column_suffix#', meta.CleanSuffix(HashKeySuffix)
           )
 		    FROM meta.EDWEntityRelationship
 		    WHERE UsedBy = @EntityId
@@ -3703,8 +3670,8 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
                       ), '#referenced_entity_name#', meta.EntityName(HubLnk)
                     ), '#referenced_entity_table_name#', meta.EntityTableName(HubLnk)
                   ), '#referenced_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumn(HubLnk) ELSE CONCAT(meta.EntityKeyColumn(HubLnk), ', [LoadDate]') END
-                ), '#suffix#', '_Master'
-              ), '#reference_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 1) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 1), ', [LoadDate]') END
+                ), '#column_suffix#', '_Master'
+              ), '#referencing_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 1) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 1), ', [LoadDate]') END
             ) Tmpl
 		        ,0 [Order]
           FROM meta.EDWEntityRelationship
@@ -3723,8 +3690,8 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
                       ), '#referenced_entity_name#', meta.EntityName(HubLnk)
                     ), '#referenced_entity_table_name#', meta.EntityTableName(HubLnk)
                   ), '#referenced_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumn(HubLnk) ELSE CONCAT(meta.EntityKeyColumn(HubLnk), ', [LoadDate]') END
-                ), '#suffix#', '_Duplicate'
-              ), '#reference_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 0) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 0), ', [LoadDate]') END
+                ), '#column_suffix#', '_Duplicate'
+              ), '#referencing_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 0) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 0), ', [LoadDate]') END
             ) Tmpl
 		        ,1 [Order]
           FROM meta.EDWEntityRelationship
@@ -3737,15 +3704,11 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
 	    SET @Sql += @FKs;
 	  END
 
-	  -- Check constraint for SATELLITE
-    IF meta.EntityTypeId(@EntityId) IN ('Sat')
-	    SET @Sql += @TemplateCheck;
-
     -- Check for index options
     IF meta.PartitioningTypeId(@EntityId) NOT IN ('N') AND dbo.SqlInstanceMajorVersion() > 11
-	    SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#, STATISTICS_INCREMENTAL = ON';
+	    SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_partitioned');
     ELSE
-      SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#';
+      SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_nonpartitioned');
 
   END
 
@@ -3754,7 +3717,7 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
   SET @Sql = REPLACE(@Sql, '#entity_name#', meta.EntityName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_table_name#', meta.[EntityTableName](@EntityId));
   SET @Sql = REPLACE(@Sql, '#key_column#', meta.EntityKeyColumn(@EntityId));
-  SET @Sql = REPLACE(@Sql, '#columns#', @Columns);
+  SET @Sql = REPLACE(@Sql, '#column_names#', @Columns);
   SET @Sql = REPLACE(@Sql, '#filegroup_data#', CASE meta.PartitioningTypeId(@EntityId) WHEN 'N' THEN meta.FileGroupData() ELSE CONCAT(meta.PartitionSchemeData(@EntityId), '([LoadDate])') END);
   SET @Sql = REPLACE(@Sql, '#filegroup_index#', CASE meta.PartitioningTypeId(@EntityId) WHEN 'N' THEN meta.FileGroupIndex() ELSE CONCAT(meta.PartitionSchemeIndex(@EntityId), '([LoadDate])') END);
   SET @Sql = REPLACE(@Sql, '#index_options#', @IndexOptions);
@@ -3792,28 +3755,19 @@ BEGIN
   IF meta.EntityTypeId(@EntityId) NOT IN ('Hub', 'Lnk', 'Sat', 'TSat', 'RSat', 'SAL')
     RETURN;
 
-  DECLARE @Sql nvarchar(MAX) = ''
-	  ,@FKs nvarchar(MAX) = ''
+  DECLARE @Sql NVARCHAR(MAX) = ''
+	  ,@FKs NVARCHAR(MAX) = ''
     ,@Database NVARCHAR(50);
 
   -- ColumnStore only
   IF meta.StorageTypeId(@EntityId) = 'Col'
   BEGIN
     DECLARE 
-	    @Template nvarchar(MAX) = '
-CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
-'
-      ,@TemplatePrimaryKey nvarchar(MAX) = '
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateForeignKey nvarchar(MAX) = '
-ALTER TABLE #entity_table_name# WITH #fk_check# ADD CONSTRAINT [FK_#entity_type#_#entity_name#_#referenced_entity_type#_#referenced_entity_name##suffix#] FOREIGN KEY (#reference_key_column#) REFERENCES #referenced_entity_table_name# (#referenced_key_column#);
-'
-      ,@TemplateCheck nvarchar(MAX) = '
-ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadDate] CHECK (([LoadDate] <= [LoadEndDate]));
-ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadEndDate] DEFAULT (''#date_range_end#'') FOR [LoadEndDate];
-'
-      ,@IndexOptions nvarchar(MAX);
+	    @Template NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesColumnStore_all'))
+      ,@TemplatePrimaryKey NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesColumnStore_pk'))
+      ,@TemplateForeignKey NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesColumnStore_fk'))
+      ,@TemplateCheck NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesColumnStore_check'))
+      ,@IndexOptions NVARCHAR(MAX);
 
     SET @Sql += @Template;
 
@@ -3839,8 +3793,8 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
                       ), '#referenced_entity_name#', meta.EntityName(HubLnk)
                     ), '#referenced_entity_table_name#', meta.EntityTableName(HubLnk)
                   ), '#referenced_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumn(HubLnk) ELSE CONCAT(meta.EntityKeyColumn(HubLnk), ', [LoadDate]') END
-                ), '#reference_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)) ELSE CONCAT(meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)), ', [LoadDate]') END
-              ), '#suffix#', meta.CleanSuffix(HashKeySuffix)
+                ), '#referencing_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)) ELSE CONCAT(meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)), ', [LoadDate]') END
+              ), '#column_suffix#', meta.CleanSuffix(HashKeySuffix)
             )
 		      FROM meta.EDWEntityRelationship
 		      WHERE UsedBy = @EntityId
@@ -3868,8 +3822,8 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
                         ), '#referenced_entity_name#', meta.EntityName(HubLnk)
                       ), '#referenced_entity_table_name#', meta.EntityTableName(HubLnk)
                     ), '#referenced_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumn(HubLnk) ELSE CONCAT(meta.EntityKeyColumn(HubLnk), ', [LoadDate]') END
-                  ), '#suffix#', '_Master'
-                ), '#reference_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 1) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 1), ', [LoadDate]') END
+                  ), '#column_suffix#', '_Master'
+                ), '#referencing_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 1) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 1), ', [LoadDate]') END
               ) Tmpl
 		          ,0 [Order]
             FROM meta.EDWEntityRelationship
@@ -3888,8 +3842,8 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
                         ), '#referenced_entity_name#', meta.EntityName(HubLnk)
                       ), '#referenced_entity_table_name#', meta.[EntityTableName](HubLnk)
                     ), '#referenced_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumn(HubLnk) ELSE CONCAT(meta.EntityKeyColumn(HubLnk), ', [LoadDate]') END
-                  ), '#suffix#', '_Duplicate'
-                ), '#reference_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 0) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 0), ', [LoadDate]') END
+                  ), '#column_suffix#', '_Duplicate'
+                ), '#referencing_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 0) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 0), ', [LoadDate]') END
               ) Tmpl
 		          ,1 [Order]
             FROM meta.EDWEntityRelationship
@@ -3908,9 +3862,9 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
 
       -- Check for index options
       IF meta.PartitioningTypeId(@EntityId) NOT IN ('N') AND dbo.SqlInstanceMajorVersion() > 11
-	      SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#, STATISTICS_INCREMENTAL = ON';
+	      SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_partitioned');
       ELSE
-        SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#';
+        SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_nonpartitioned');
 
     END
 
@@ -3958,38 +3912,21 @@ BEGIN
   IF meta.EntityTypeId(@EntityId) NOT IN ('Hub', 'Lnk', 'Sat', 'TSat', 'RSat', 'SAL')
     RETURN;
 
-  DECLARE @Sql nvarchar(MAX) = ''
-    ,@Columns nvarchar(MAX) = ''
-	  ,@FKs nvarchar(MAX) = ''
+  DECLARE @Sql NVARCHAR(MAX) = ''
+    ,@Columns NVARCHAR(MAX) = ''
+	  ,@FKs NVARCHAR(MAX) = ''
     ,@Database NVARCHAR(50);
 
   -- RowStore only
   IF meta.StorageTypeId(@EntityId) = 'Row'
   BEGIN
     DECLARE 
-      @TemplateHubLnk nvarchar(MAX) = '
-CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
-CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#columns#) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateSat nvarchar(MAX) = '
-CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
-CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadEndDate] ON #entity_table_name# (LoadEndDate, #key_column#) INCLUDE (HashDiff) WITH (#index_options#) ON #filegroup_index#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC, [LoadDate] ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateTSat nvarchar(MAX) = '
-CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC, [LoadDate] ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateForeignKey nvarchar(MAX) = '
-ALTER TABLE #entity_table_name# WITH #fk_check# ADD CONSTRAINT [FK_#entity_type#_#entity_name#_#referenced_entity_type#_#referenced_entity_name##suffix#] FOREIGN KEY (#reference_key_column#) REFERENCES #referenced_entity_table_name# (#referenced_key_column#);
-'
-      ,@TemplateCheck nvarchar(MAX) = '
-ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadDate] CHECK (([LoadDate] <= [LoadEndDate]));
-ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadEndDate] DEFAULT (''#date_range_end#'') FOR [LoadEndDate];
-'
-      ,@IndexOptions nvarchar(MAX)
-      ,@PartitionField nvarchar(50);
+      @TemplateHubLnk NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesRowStore_hub_link'))
+      ,@TemplateSat NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesRowStore_sat'))
+      ,@TemplateTSat NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesRowStore_tsat'))
+      ,@TemplateForeignKey NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWIndexesRowStore_fk'))
+      ,@IndexOptions NVARCHAR(MAX)
+      ,@PartitionField NVARCHAR(50);
 
     -- Objects for HUB
     IF meta.EntityTypeId(@EntityId) = 'Hub'
@@ -4094,8 +4031,8 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
                     ), '#referenced_entity_name#', meta.EntityName(HubLnk)
                   ), '#referenced_entity_table_name#', meta.EntityTableName(HubLnk)
                 ), '#referenced_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumn(HubLnk) ELSE CONCAT(meta.EntityKeyColumn(HubLnk), ', [LoadDate]') END
-              ), '#reference_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)) ELSE CONCAT(meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)), ', [LoadDate]') END
-            ), '#suffix#', meta.CleanSuffix(HashKeySuffix)
+              ), '#referencing_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)) ELSE CONCAT(meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix)), ', [LoadDate]') END
+            ), '#column_suffix#', meta.CleanSuffix(HashKeySuffix)
           )
 		    FROM meta.EDWEntityRelationship
 		    WHERE UsedBy = @EntityId
@@ -4123,8 +4060,8 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
                       ), '#referenced_entity_name#', meta.EntityName(HubLnk)
                     ), '#referenced_entity_table_name#', meta.EntityTableName(HubLnk)
                   ), '#referenced_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumn(HubLnk) ELSE CONCAT(meta.EntityKeyColumn(HubLnk), ', [LoadDate]') END
-                ), '#suffix#', '_Master'
-              ), '#reference_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 1) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 1), ', [LoadDate]') END
+                ), '#column_suffix#', '_Master'
+              ), '#referencing_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 1) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 1), ', [LoadDate]') END
             ) Tmpl
 		        ,0 [Order]
           FROM meta.EDWEntityRelationship
@@ -4143,8 +4080,8 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
                       ), '#referenced_entity_name#', meta.EntityName(HubLnk)
                     ), '#referenced_entity_table_name#', meta.EntityTableName(HubLnk)
                   ), '#referenced_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumn(HubLnk) ELSE CONCAT(meta.EntityKeyColumn(HubLnk), ', [LoadDate]') END
-                ), '#suffix#', '_Duplicate'
-              ), '#reference_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 0) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 0), ', [LoadDate]') END
+                ), '#column_suffix#', '_Duplicate'
+              ), '#referencing_key_column#', CASE meta.PartitioningTypeId(HubLnk) WHEN 'N' THEN meta.EntityKeyColumnMasterDuplicate(HubLnk, 0) ELSE CONCAT(meta.EntityKeyColumnMasterDuplicate(HubLnk, 0), ', [LoadDate]') END
             ) Tmpl
 		        ,1 [Order]
           FROM meta.EDWEntityRelationship
@@ -4157,15 +4094,11 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
 	    SET @Sql += @FKs;
 	  END
 
-	  -- Check constraint for SATELLITE
-    IF meta.EntityTypeId(@EntityId) IN ('Sat')
-	    SET @Sql += @TemplateCheck;
-
     -- Check for index options
     IF meta.PartitioningTypeId(@EntityId) NOT IN ('N') AND dbo.SqlInstanceMajorVersion() > 11
-	    SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#, STATISTICS_INCREMENTAL = ON';
+	    SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_partitioned');
     ELSE
-      SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#';
+      SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_nonpartitioned');
 
   END
 
@@ -4174,7 +4107,7 @@ ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#ent
   SET @Sql = REPLACE(@Sql, '#entity_name#', meta.EntityName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_table_name#', meta.[EntityTableName](@EntityId));
   SET @Sql = REPLACE(@Sql, '#key_column#', meta.EntityKeyColumn(@EntityId));
-  SET @Sql = REPLACE(@Sql, '#columns#', @Columns);
+  SET @Sql = REPLACE(@Sql, '#column_names#', @Columns);
   SET @Sql = REPLACE(@Sql, '#filegroup_data#', CASE meta.PartitioningTypeId(@EntityId) WHEN 'N' THEN meta.FileGroupData() ELSE CONCAT(meta.PartitionSchemeData(@EntityId), '([LoadDate])') END);
   SET @Sql = REPLACE(@Sql, '#filegroup_index#', CASE meta.PartitioningTypeId(@EntityId) WHEN 'N' THEN meta.FileGroupIndex() ELSE CONCAT(meta.PartitionSchemeIndex(@EntityId), '([LoadDate])') END);
   SET @Sql = REPLACE(@Sql, '#index_options#', @IndexOptions);
@@ -4239,29 +4172,28 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#edw_schema#'', @ObjectName = ''[#entity_prefix##entity_type#_#entity_name#]'', @ObjectType = ''TABLE'', @PrintOnly = #printonly#;
-'
-    ,@Template nvarchar(MAX) = '
-CREATE TABLE #entity_table_name# (
-  #key_column# #data_type_hash_key# NOT NULL
-  ,[LoadDate] [datetime2] NOT NULL
-#load_date_short#
-#load_end_date#
-  ,[RecordSource] [varchar](50) NOT NULL
-#hash_diff#
-#columns#
-) ON #filegroup_data#;
-'
-    ,@TemplateKeyColumns nvarchar(MAX) = '  ,[#column_name#] #data_type# NOT NULL' + CHAR(13) + CHAR(10)
-	  ,@TemplateColumns nvarchar(MAX) = '  ,[#column_name#] #data_type# NULL' + CHAR(13) + CHAR(10)
-	  ,@Sql nvarchar(MAX)
-	  ,@HashDiff nvarchar(MAX) = ''
-    ,@LoadDateShort nvarchar(MAX) = ''
-	  ,@LoadEndDate nvarchar(MAX) = ''
-	  ,@Columns nvarchar(MAX) = ''
-	  ,@KeyColumn nvarchar(255)
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWTable'))
+    ,@TemplateKeyColumns NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWTable_key_columns'))
+	  ,@TemplateColumns NVARCHAR(MAX) = (SELECT meta.TemplateText('EDWTable_column_names'))
+	  ,@Sql NVARCHAR(MAX)
+	  ,@HashDiff NVARCHAR(MAX) = ''
+    ,@LoadDateShort NVARCHAR(MAX) = ''
+	  ,@LoadEndDate NVARCHAR(MAX) = ''
+	  ,@Columns NVARCHAR(MAX) = ''
+	  ,@KeyColumn NVARCHAR(255)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#edw_schema#')
+        , '#object_name#', '[#entity_prefix##entity_type#_#entity_name#]')
+      , '#object_type#', 'TABLE'
+    );
 
   -- Search for key columns
   IF meta.EntityTypeId(@EntityId) IN ('Hub', 'Lnk', 'SAL')
@@ -4381,10 +4313,10 @@ CREATE TABLE #entity_table_name# (
   SET @Sql = REPLACE(@Sql, '#entity_table_name#', meta.EntityTableName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#key_column#', @KeyColumn);
   SET @Sql = REPLACE(@Sql, '#data_type_hash_key#', meta.SqlDataTypeHashKey());
-  SET @Sql = REPLACE(@Sql, '#hash_diff#', @HashDiff);
-  SET @Sql = REPLACE(@Sql, '#load_date_short#', @LoadDateShort);
-  SET @Sql = REPLACE(@Sql, '#load_end_date#', @LoadEndDate);
-  SET @Sql = REPLACE(@Sql, '#columns#', @Columns);
+  SET @Sql = REPLACE(@Sql, '#hash_diff_column#', @HashDiff);
+  SET @Sql = REPLACE(@Sql, '#load_date_short_column#', @LoadDateShort);
+  SET @Sql = REPLACE(@Sql, '#load_end_date_column#', @LoadEndDate);
+  SET @Sql = REPLACE(@Sql, '#column_names#', @Columns);
   SET @Sql = REPLACE(@Sql, '#edw_db#', meta.WarehouseDbName());
   SET @Sql = REPLACE(@Sql, '#edw_schema#', meta.WarehouseRawSchema());
   SET @Sql = REPLACE(@Sql, '#meta_db#', meta.MetaDbName());
@@ -4416,13 +4348,9 @@ BEGIN
   EXEC meta.CheckEnvironment;
 
   DECLARE 
-    @Template nvarchar(MAX) = '
-ALTER DATABASE #db_name# SET AUTO_CREATE_STATISTICS ON #incremental#;
-ALTER DATABASE #db_name# SET READ_COMMITTED_SNAPSHOT ON WITH NO_WAIT;
-
-'
-	  ,@Sql nvarchar(MAX)
-    ,@Incremental nvarchar(50)
+    @Template NVARCHAR(MAX) = (SELECT meta.TemplateText('DatabaseOptions'))
+	  ,@Sql NVARCHAR(MAX)
+    ,@Incremental NVARCHAR(50)
     ,@Database NVARCHAR(50);
 
   IF dbo.SqlInstanceMajorVersion() > 11
@@ -4432,7 +4360,7 @@ ALTER DATABASE #db_name# SET READ_COMMITTED_SNAPSHOT ON WITH NO_WAIT;
 
   -- Replace Placeholders for Staging database
   SET @Sql = REPLACE(@Template, '#db_name#', meta.StagingDbName());
-  SET @Sql = REPLACE(@Sql, '#incremental#', @Incremental);
+  SET @Sql = REPLACE(@Sql, '#incremental_statistics#', @Incremental);
   SET @Sql = REPLACE(@Sql, '&#x0D;', '');
 
   SET @Database = '[master]';
@@ -4443,7 +4371,7 @@ ALTER DATABASE #db_name# SET READ_COMMITTED_SNAPSHOT ON WITH NO_WAIT;
 
   -- Replace Placeholders for EDW database
   SET @Sql = REPLACE(@Template, '#db_name#', meta.WarehouseDbName());
-  SET @Sql = REPLACE(@Sql, '#incremental#', @Incremental);
+  SET @Sql = REPLACE(@Sql, '#incremental_statistics#', @Incremental);
   SET @Sql = REPLACE(@Sql, '&#x0D;', '');
 
   EXEC dbo.ExecuteOrPrint
@@ -4471,41 +4399,31 @@ BEGIN
   -- Valid for all entities
   
   DECLARE 
-    @TemplateDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#schema#'', @ObjectName = ''[FinalizeEntity_#entity_type#_#entity_name#]'', @ObjectType = ''PROCEDURE'', @PrintOnly = #printonly#;
-'
-    ,@Template nvarchar(MAX) = '
-DECLARE @Stmt nvarchar(MAX) = ''
-CREATE PROCEDURE #schema#.[FinalizeEntity_#entity_type#_#entity_name#]
-    @LoadDate DATETIME2
-
-AS
-#body#
-'';   
-
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
+DECLARE @Stmt nvarchar(MAX) = ''#body#'';   
 EXEC sys.sp_executesql @Stmt;
 '
-    ,@BodyPartitioned nvarchar(MAX) = '
-DECLARE @Sql NVARCHAR(MAX) = ''''
-UPDATE STATISTICS #entity_table_name# WITH RESAMPLE ON PARTITIONS(#partnum#), ALL, NORECOMPUTE;
-'''';
-
-SET @Sql = REPLACE(@Sql, ''''#partnum#'''', $PARTITION.#partition_function#(@LoadDate));
-
-EXEC sys.sp_executesql @Sql;
-'
-    ,@BodyNonPartitioned nvarchar(MAX) = '
-UPDATE STATISTICS #entity_table_name# WITH ALL, NORECOMPUTE;
-'
-    ,@Sql nvarchar(MAX)
+    ,@Sql NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#schema#')
+        , '#object_name#', '[FinalizeEntity_#entity_type#_#entity_name#]')
+      , '#object_type#', 'PROCEDURE'
+    );
 
   IF meta.EntityTypeId(@EntityId) IN ('Lnk', 'Sat', 'TSat', 'RSat', 'Br', 'Pit') 
     AND meta.PartitioningTypeId(@EntityId) NOT IN ('N')
     AND dbo.SqlInstanceMajorVersion() > 11
-	  SET @Sql = REPLACE(@Template, '#body#', @BodyPartitioned);
+	  SET @Sql = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('FinalizeEntityProc_partitioned'), '''', ''''''));
   ELSE
-    SET @Sql = REPLACE(@Template, '#body#', @BodyNonPartitioned);
+    SET @Sql = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('FinalizeEntityProc_nonpartitioned'), '''', ''''''));;
 
   -- Replace Placeholders
   SET @TemplateDrop = REPLACE(@TemplateDrop, '#meta_db#', meta.MetaDbName());
@@ -4563,49 +4481,33 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#edw_schema#'', @ObjectName = ''[Get_#entity_type#_#entity_name#]'', @ObjectType = ''PROCEDURE'', @PrintOnly = #printonly#;
-'
-    ,@Template nvarchar(MAX) = '
-DECLARE @Stmt nvarchar(MAX) = ''
-CREATE PROCEDURE #edw_schema#.[Get_#entity_type#_#entity_name#]
-  @SnapshotDate datetime2
-
-WITH RECOMPILE
-AS
-
-SELECT 
-  #key_column# = 
-    dbo.GetHash(
-      CONCAT(
-	      ''''''''
-#columns_hash#
-	    )
-    )
-  ,#referenced_entity_type#.#referenced_key_column#
-  ,[SnapshotDate] = @SnapshotDate
-  ,[SnapshotDateShort] = CONVERT(date, @SnapshotDate)
-#columns#
-FROM #referenced_entity_table_name# #referenced_entity_type#
-#join_conditions#
-ORDER BY #referenced_entity_type#.#referenced_key_column#;
-'';
-
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
+DECLARE @Stmt nvarchar(MAX) = ''#body#'';
 EXEC sys.sp_executesql @Stmt;
 '
-	  ,@TemplateColumns nvarchar(MAX) = '
-  ,[#referenced_entity_name#_#key_column#] = ISNULL(#referenced_entity_type#_#referenced_entity_id#.#key_column#, REPLICATE(''''0'''', #hash_type_len#))
-  ,[#referenced_entity_name#_LoadDate] = ISNULL(#referenced_entity_type#_#referenced_entity_id#.LoadDate, ''''#date_range_start#'''')'
-	  ,@TemplateHashColumns nvarchar(MAX) = '        ,CONCAT(#column_name#, ''''#hash_delimiter#'''')' + CHAR(13) + CHAR(10)
-	  ,@TemplateJoins nvarchar(MAX) = '
-  LEFT JOIN #edw_schema#.[#referenced_entity_type#_#referenced_entity_name#] #referenced_entity_type#_#referenced_entity_id# ON #entity_type#.#key_column# = #referenced_entity_type#_#referenced_entity_id#.#key_column#
-    AND @SnapshotDate BETWEEN #referenced_entity_type#_#referenced_entity_id#.[LoadDate] AND #referenced_entity_type#_#referenced_entity_id#.[LoadEndDate]'
-	  ,@Sql nvarchar(MAX)
-	  ,@HashKeyColumns nvarchar(MAX)
-	  ,@Columns nvarchar(MAX)
-	  ,@Joins nvarchar(MAX)
-	  ,@ReferencedEntityId int
+	  ,@TemplateColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('EDWGetPitProc_column_names'), '''', ''''''))
+	  ,@TemplateHashColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('EDWGetPitProc_columns_hash'), '''', ''''''))
+	  ,@TemplateJoins NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('EDWGetPitProc_join_conditions'), '''', ''''''))
+	  ,@Sql NVARCHAR(MAX)
+	  ,@HashKeyColumns NVARCHAR(MAX)
+	  ,@Columns NVARCHAR(MAX)
+	  ,@Joins NVARCHAR(MAX)
+	  ,@ReferencedEntityId INT
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#edw_schema#')
+        , '#object_name#', '[Get_#entity_type#_#entity_name#]')
+      , '#object_type#', 'PROCEDURE'
+    );
+
+  SET @Template = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('EDWGetPitProc'), '''', ''''''))
 
   IF meta.EntityTypeId(@EntityId) = 'Pit'
     SELECT @ReferencedEntityId = HubLnk
@@ -4688,9 +4590,9 @@ EXEC sys.sp_executesql @Stmt;
   SET @Sql = REPLACE(@Sql, '#referenced_entity_table_name#', meta.EntityTableName(@ReferencedEntityId));
   SET @Sql = REPLACE(@Sql, '#referenced_entity_type#', meta.EntityTypeId(@ReferencedEntityId));
   SET @Sql = REPLACE(@Sql, '#referenced_key_column#', meta.EntityKeyColumn(@ReferencedEntityId));
-  SET @Sql = REPLACE(@Sql, '#columns#', @Columns);
+  SET @Sql = REPLACE(@Sql, '#column_names#', @Columns);
   SET @Sql = REPLACE(@Sql, '#join_conditions#', @Joins);
-  SET @Sql = REPLACE(@Sql, '#columns_hash#', @HashKeyColumns);
+  SET @Sql = REPLACE(@Sql, '#hash_columns#', @HashKeyColumns);
   SET @Sql = REPLACE(@Sql, '#hash_type_len#', meta.SqlDataTypeHashKeyLength());
   SET @Sql = REPLACE(@Sql, '#edw_schema#', meta.WarehouseRawSchema());
   SET @Sql = REPLACE(@Sql, '#date_range_start#', meta.DateRangeStart());
@@ -4725,31 +4627,20 @@ BEGIN
   IF meta.EntityTypeId(@EntityId) NOT IN ('Pit', 'Br')
     RETURN;
 
-  DECLARE @Sql nvarchar(MAX) = ''
-	  ,@NCI nvarchar(MAX) = ''
+  DECLARE @Sql NVARCHAR(MAX) = ''
+	  ,@NCI NVARCHAR(MAX) = ''
     ,@Database NVARCHAR(50);
 
   -- RowStore only
   IF meta.StorageTypeId(@EntityId) = 'Row'
   BEGIN
     DECLARE 
-      @TemplatePit nvarchar(MAX) = '
-CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_SnapshotDate] ON #entity_table_name# ([SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_data#;
-CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#referenced_key_column# ASC, [SnapshotDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateBr nvarchar(MAX) = '
-CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_SnapshotDate] ON #entity_table_name# ([SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_data#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_columns# [SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateAdditional nvarchar(MAX) = '
-CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_#referenced_entity_name#] ON #entity_table_name# ([#referenced_entity_name#_#referenced_key_column#] ASC, [#referenced_entity_name#_LoadDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_#referenced_key_column#] DEFAULT (''#default_hash_key#'') FOR [#referenced_entity_name#_#referenced_key_column#];
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_LoadDate] DEFAULT (''#date_range_start#'') FOR [#referenced_entity_name#_LoadDate];
-'
-      ,@ReferencedEntityId int
-      ,@KeyColumns nvarchar(MAX)
-      ,@IndexOptions nvarchar(max);
+      @TemplatePit NVARCHAR(MAX) = (SELECT meta.TemplateText('BizIndexesRowStore_pit'))
+      ,@TemplateBr NVARCHAR(MAX) = (SELECT meta.TemplateText('BizIndexesRowStore_bridge'))
+      ,@TemplateAdditional NVARCHAR(MAX) = (SELECT meta.TemplateText('BizIndexesRowStore_common'))
+      ,@ReferencedEntityId INT
+      ,@KeyColumns NVARCHAR(MAX)
+      ,@IndexOptions NVARCHAR(max);
 
 	  -- Objects for PIT
 	  IF meta.EntityTypeId(@EntityId) IN ('Pit')
@@ -4791,9 +4682,9 @@ ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#
 
     -- Check for index options
     IF meta.PartitioningTypeId(@EntityId) NOT IN ('N') AND dbo.SqlInstanceMajorVersion() > 11
-	    SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#, STATISTICS_INCREMENTAL = ON';
+	    SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_partitioned');
     ELSE
-      SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#';
+      SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_nonpartitioned');
 
   END
 
@@ -4839,22 +4730,17 @@ BEGIN
   IF meta.EntityTypeId(@EntityId) NOT IN ('Pit', 'Br')
     RETURN;
 
-  DECLARE @Sql nvarchar(MAX) = ''
-	  ,@NCI nvarchar(MAX) = ''
+  DECLARE @Sql NVARCHAR(MAX) = ''
+	  ,@NCI NVARCHAR(MAX) = ''
     ,@Database NVARCHAR(50);
 
   -- ColumnStore only
   IF meta.StorageTypeId(@EntityId) = 'Col'
   BEGIN
     DECLARE 
-	    @Template nvarchar(MAX) = '
-CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
-'
-      ,@TemplateAdditional nvarchar(MAX) = '
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_#referenced_key_column#] DEFAULT (''#default_hash_key#'') FOR [#referenced_entity_name#_#referenced_key_column#];
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_LoadDate] DEFAULT (''#date_range_start#'') FOR [#referenced_entity_name#_LoadDate];
-'
-      ,@ReferencedEntityId int;
+	    @Template NVARCHAR(MAX) = (SELECT meta.TemplateText('BizIndexesColumnStore_all'))
+      ,@TemplateAdditional NVARCHAR(MAX) = (SELECT meta.TemplateText('BizIndexesColumnStore_common'))
+      ,@ReferencedEntityId INT;
 
     SET @Sql += @Template;
 
@@ -4922,33 +4808,19 @@ BEGIN
 	  RETURN;
   END
 
-  DECLARE @Sql nvarchar(MAX) = ''
-	  ,@NCI nvarchar(MAX) = ''
+  DECLARE @Sql NVARCHAR(MAX) = ''
+	  ,@NCI NVARCHAR(MAX) = ''
     ,@Database NVARCHAR(50);
 
   -- ColumnStore and RowStore
   IF meta.StorageTypeId(@EntityId) = 'CR'
   BEGIN
     DECLARE 
-      @TemplatePit nvarchar(MAX) = '
-CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
-CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_SnapshotDate] ON #entity_table_name# ([SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_index#;
-CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#referenced_key_column# ASC, [SnapshotDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateBr nvarchar(MAX) = '
-CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
-CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_SnapshotDate] ON #entity_table_name# ([SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_index#;
-CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#referenced_key_column# ASC, [SnapshotDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
-'
-      ,@TemplateAdditional nvarchar(MAX) = '
-CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_#referenced_entity_name#] ON #entity_table_name# ([#referenced_entity_name#_#referenced_key_column#] ASC, [#referenced_entity_name#_LoadDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_#referenced_key_column#] DEFAULT (''#default_hash_key#'') FOR [#referenced_entity_name#_#referenced_key_column#];
-ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_LoadDate] DEFAULT (''#date_range_start#'') FOR [#referenced_entity_name#_LoadDate];
-'
-      ,@ReferencedEntityId int
-      ,@IndexOptions nvarchar(max);
+      @TemplatePit NVARCHAR(MAX) = (SELECT meta.TemplateText('BizIndexesColumnRowStore_pit'))
+      ,@TemplateBr NVARCHAR(MAX) = (SELECT meta.TemplateText('BizIndexesColumnRowStore_bridge'))
+      ,@TemplateAdditional NVARCHAR(MAX) = (SELECT meta.TemplateText('BizIndexesColumnRowStore_common'))
+      ,@ReferencedEntityId INT
+      ,@IndexOptions NVARCHAR(max);
 
     SELECT @ReferencedEntityId = HubLnk
     FROM meta.EDWEntityRelationship
@@ -4979,9 +4851,9 @@ ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#
 
     -- Check for index options
     IF meta.PartitioningTypeId(@EntityId) NOT IN ('N') AND dbo.SqlInstanceMajorVersion() > 11
-	    SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#, STATISTICS_INCREMENTAL = ON';
+	    SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_partitioned');
     ELSE
-      SET @IndexOptions = 'DATA_COMPRESSION = #rowstore_compression#';
+      SET @IndexOptions = meta.TemplateText('IndexOptionsRowStore_nonpartitioned');
 
   END
 
@@ -5028,35 +4900,32 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop NVARCHAR(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#edw_schema#'', @ObjectName = ''[#entity_type#_#entity_name#]'', @ObjectType = ''VIEW'', @PrintOnly = #printonly#;
-'
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
     ,@Template NVARCHAR(MAX) = '
-DECLARE @Stmt nvarchar(MAX) = ''
-CREATE VIEW #edw_schema#.[#entity_type#_#entity_name#]
-
-AS
-
-  SELECT
-    #key_column#
-    ,[LoadDate]
-#load_end_date#
-    ,[RecordSource]
-#hash_diff#
-#columns#
-  FROM #entity_table_name#
-'';
-
+DECLARE @Stmt nvarchar(MAX) = ''#body#'';
 EXEC sys.sp_executesql @Stmt;
 '
-	  ,@TemplateColumns nvarchar(MAX) = '    ,[#column_name#]' + CHAR(13) + CHAR(10)
-    ,@TemplateLoadEndDate nvarchar(MAX) = '    ,[LoadEndDate] = ISNULL(DATEADD(ss, -1, LAG([LoadDate]) OVER(PARTITION BY #key_column# ORDER BY [LoadDate] DESC)), ''''#date_range_end#'''')' + CHAR(13) + CHAR(10)
-	  ,@Sql nvarchar(MAX)
-	  ,@HashDiff nvarchar(MAX) = ''
-	  ,@LoadEndDate nvarchar(MAX) = ''
-	  ,@Columns nvarchar(MAX) = ''
-	  ,@KeyColumn nvarchar(255)
+	  ,@TemplateColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('EDWView_column_names'), '''', ''''''))
+    ,@TemplateLoadEndDate NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('EDWView_virtualized_load_end_date_column'), '''', ''''''))
+	  ,@Sql NVARCHAR(MAX)
+	  ,@HashDiff NVARCHAR(MAX) = ''
+	  ,@LoadEndDate NVARCHAR(MAX) = ''
+	  ,@Columns NVARCHAR(MAX) = ''
+	  ,@KeyColumn NVARCHAR(255)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#edw_schema#')
+        , '#object_name#', '[#entity_type#_#entity_name#]')
+      , '#object_type#', 'VIEW'
+    );
+
+  SET @Template = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('EDWView'), '''', ''''''))
 
   -- Search for key columns
 	SET @KeyColumn = (SELECT meta.EntityKeyColumn(HubLnk) FROM meta.EDWEntityRelationship WHERE UsedBy = @EntityId);
@@ -5107,9 +4976,9 @@ EXEC sys.sp_executesql @Stmt;
   SET @Sql = REPLACE(@Sql, '#entity_name#', meta.EntityName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_table_name#', meta.EntityTableName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#key_column#', @KeyColumn);
-  SET @Sql = REPLACE(@Sql, '#hash_diff#', @HashDiff);
-  SET @Sql = REPLACE(@Sql, '#load_end_date#', @LoadEndDate);
-  SET @Sql = REPLACE(@Sql, '#columns#', @Columns);
+  SET @Sql = REPLACE(@Sql, '#hash_diff_column#', @HashDiff);
+  SET @Sql = REPLACE(@Sql, '#load_end_date_column#', @LoadEndDate);
+  SET @Sql = REPLACE(@Sql, '#column_names#', @Columns);
   SET @Sql = REPLACE(@Sql, '#edw_schema#', meta.WarehouseRawSchema());
   SET @Sql = REPLACE(@Sql, '#date_range_end#', meta.DateRangeEnd());
   SET @Sql = REPLACE(@Sql, '#printonly#', @PrintOnly);
@@ -5139,24 +5008,8 @@ BEGIN
   EXEC meta.CheckEnvironment;
 
   DECLARE 
-    @Template nvarchar(MAX) = '
-DECLARE @Stmt nvarchar(MAX);
-
-IF NOT EXISTS
-(
-  SELECT *
-  FROM INFORMATION_SCHEMA.SCHEMATA
-  WHERE SCHEMA_NAME = ''#schema_no_brackets#''
-)
-BEGIN
-  SET @Stmt = ''
-CREATE SCHEMA #schema# AUTHORIZATION [dbo];
-'';
-
-  EXEC sys.sp_executesql @Stmt;
-END
-'
-	  ,@Sql nvarchar(MAX)
+    @Template NVARCHAR(MAX) = (SELECT meta.TemplateText('Schemata'))
+	  ,@Sql NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
 
   -- Replace Placeholders
@@ -5233,12 +5086,9 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @Sql nvarchar(MAX) = '' 
-    ,@Template nvarchar(MAX) = '
-CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name##_##hub_name#_LoadDate] ON #error_schema#.[#entity_type#_#entity_name##_##hub_name#] ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
-ALTER TABLE #error_schema#.[#entity_type#_#entity_name##_##hub_name#] ADD CONSTRAINT [PK_#entity_type#_#entity_name##_##hub_name#] PRIMARY KEY NONCLUSTERED ([Id] ASC) WITH (#index_options#) ON #filegroup_index#;
-'	
-    ,@IndexOptions nvarchar(MAX)
+    @Sql NVARCHAR(MAX) = '' 
+    ,@Template NVARCHAR(MAX) = (SELECT meta.TemplateText('LookupErrorIndexes'))
+    ,@IndexOptions NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
       
   -- Create indexes on Sat lookup error table
@@ -5309,33 +5159,34 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#error_schema#'', @ObjectName = ''[#entity_type#_#entity_name##_##hub_name#]'', @ObjectType = ''TABLE'', @PrintOnly = #printonly#;
-'
-    ,@Template nvarchar(MAX) = '
-DECLARE @Stmt_#id##suffix# nvarchar(MAX) = ''
-CREATE TABLE #error_schema#.[#entity_type#_#entity_name##_##hub_name#] (
-  [Id] [bigint] IDENTITY(1,1) NOT NULL
-  ,#primary_key_column# #primary_key_datatype# NOT NULL
-  ,[LoadDate] [datetime2](7) NOT NULL
-  ,[RecordSource] [varchar](50) NOT NULL
-#key_or_hashkey_columns#
-) ON #filegroup_data#
-'';
-
-EXEC sys.sp_executesql @Stmt_#id##suffix#;
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
+DECLARE @Stmt_#id##column_suffix# nvarchar(MAX) = ''#body#'';
+EXEC sys.sp_executesql @Stmt_#id##column_suffix#;
 '	
-    ,@TemplateKeyColumns nvarchar(MAX) = '  ,[#column_name#] #data_type# NOT NULL' + CHAR(13) + CHAR(10)
-    ,@TemplateHashColumns nvarchar(MAX) = '  ,#key_column# #key_datatype# NOT NULL'
-    ,@SqlDrop nvarchar(MAX)
-    ,@Sql nvarchar(MAX)
-    ,@Columns nvarchar(MAX)
+    ,@TemplateKeyColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('LookupErrorTable_key_columns'), '''', ''''''))
+    ,@TemplateHashColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('LookupErrorTable_columns_hash'), '''', ''''''))
+    ,@SqlDrop NVARCHAR(MAX)
+    ,@Sql NVARCHAR(MAX)
+    ,@Columns NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#error_schema#')
+        , '#object_name#', '[#entity_type#_#entity_name##_##hub_name#]')
+      , '#object_type#', 'TABLE'
+    );
+
+  SET @Template = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('LookupErrorTable'), '''', ''''''))
     
   -- Search for Biz Keys in Sat
   IF meta.EntityTypeId(@EntityId) = 'Sat'
-  BEGIN    
-    
+  BEGIN
     SET @Columns = (
       SELECT 
         REPLACE(
@@ -5376,7 +5227,7 @@ EXEC sys.sp_executesql @Stmt_#id##suffix#;
                 @Template, '#id#', HubLnk
               ), '#key_or_hashkey_columns#', @Columns
             ), '#hub_name#', ''
-          ), '#suffix#', meta.CleanSuffix(HashKeySuffix)
+          ), '#column_suffix#', meta.CleanSuffix(HashKeySuffix)
         )
       FROM meta.EDWEntityRelationship 
       WHERE UsedBy = @EntityId
@@ -5414,7 +5265,7 @@ EXEC sys.sp_executesql @Stmt_#id##suffix#;
                 @Template, '#id#', HubLnk
               ), '#key_or_hashkey_columns#', REPLACE(REPLACE(@TemplateHashColumns, '#key_column#', meta.EntityKeyColumnWithSuffix(HubLnk, meta.CleanSuffix(HashKeySuffix))), '#key_datatype#' , meta.SqlDataTypeHashKey())
             ), '#hub_name#', CONCAT(meta.EntityName(HubLnk), meta.CleanSuffix(HashKeySuffix))
-          ), '#suffix#', meta.CleanSuffix(HashKeySuffix)
+          ), '#column_suffix#', meta.CleanSuffix(HashKeySuffix)
         )
       FROM meta.EDWEntityRelationship 
       WHERE UsedBy = @EntityId
@@ -5453,8 +5304,8 @@ EXEC sys.sp_executesql @Stmt_#id##suffix#;
 
   SET @Sql = REPLACE(@Sql, '#error_schema#', meta.WarehouseErrorSchema());
   SET @Sql = REPLACE(@Sql, '#entity_type#', meta.EntityTypeId(@EntityId));
-  SET @Sql = REPLACE(@Sql, '#primary_key_column#', meta.EntityKeyColumn(@EntityId));
-  SET @Sql = REPLACE(@Sql, '#primary_key_datatype#', meta.SqlDataTypeHashKey());
+  SET @Sql = REPLACE(@Sql, '#key_column#', meta.EntityKeyColumn(@EntityId));
+  SET @Sql = REPLACE(@Sql, '#key_datatype#', meta.SqlDataTypeHashKey());
   SET @Sql = REPLACE(@Sql, '#filegroup_data#', meta.FileGroupData());
   SET @Sql = REPLACE(@Sql, '#printonly#', @PrintOnly);
   SET @Sql = REPLACE(@Sql, '&#x0D;', '');
@@ -5495,26 +5346,30 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @SqlDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#edw_schema#'', @ObjectName = ''[GhostRecordDelete_#entity_type#_#entity_name#]'', @ObjectType = ''PROCEDURE'', @PrintOnly = #printonly#;
-'
-    ,@Sql nvarchar(MAX) = '
-DECLARE @Stmt nvarchar(MAX) = ''
-CREATE PROCEDURE #edw_schema#.[GhostRecordDelete_#entity_type#_#entity_name#]
-
-AS
-
-SET NOCOUNT ON;
-
-DELETE FROM #entity_table_name# WHERE #key_column# = CONVERT(#data_type_hash_key#, ''''#default_hash_key#'''');
-'';
-
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
+DECLARE @Stmt nvarchar(MAX) = ''#body#'';
 EXEC sys.sp_executesql @Stmt;
 '
-    ,@Database NVARCHAR(50);
+    ,@Database NVARCHAR(50)
+    ,@Sql NVARCHAR(MAX)
+    ,@SqlDrop NVARCHAR(MAX);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#edw_schema#')
+        , '#object_name#', '[GhostRecordDelete_#entity_type#_#entity_name#]')
+      , '#object_type#', 'PROCEDURE'
+    );
+
+  SET @Template = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('EDWGhostRecordDeleteProc'), '''', ''''''))
 
   -- Replace Placeholders
-  SET @SqlDrop = REPLACE(@SqlDrop, '#meta_db#', meta.MetaDbName());
+  SET @SqlDrop = REPLACE(@TemplateDrop, '#meta_db#', meta.MetaDbName());
   SET @SqlDrop = REPLACE(@SqlDrop, '#edw_db#', meta.WarehouseDbName());
   SET @SqlDrop = REPLACE(@SqlDrop, '#staging_db#', meta.StagingDbName());
   SET @SqlDrop = REPLACE(@SqlDrop, '#entity_prefix#', CASE meta.EntityTypeId(@EntityId) WHEN 'Sat' THEN 'tbl_' ELSE '' END);
@@ -5533,7 +5388,7 @@ EXEC sys.sp_executesql @Stmt;
 	  ,@SqlDrop
 	  ,@PrintOnly;
 
-  SET @Sql = REPLACE(@Sql, '#entity_type#', meta.EntityTypeId(@EntityId));
+  SET @Sql = REPLACE(@Template, '#entity_type#', meta.EntityTypeId(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_name#', meta.EntityName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_table_name#', meta.[EntityTableName](@EntityId));
   SET @Sql = REPLACE(@Sql, '#key_column#', meta.EntityKeyColumn(@EntityId));
@@ -5578,50 +5433,31 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @SqlDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#edw_schema#'', @ObjectName = ''[GhostRecordInsert_#entity_type#_#entity_name#]'', @ObjectType = ''PROCEDURE'', @PrintOnly = #printonly#;
-'
-    ,@Sql NVARCHAR(MAX) = '
-DECLARE @Stmt nvarchar(MAX) = ''
-CREATE PROCEDURE #edw_schema#.[GhostRecordInsert_#entity_type#_#entity_name#]
-
-AS
-
-SET NOCOUNT ON;
-
-IF NOT EXISTS 
-(
-  SELECT *
-  FROM #entity_table_name# 
-  WHERE #key_column# = CONVERT(#data_type_hash_key#, ''''#default_hash_key#'''')
-)
-  INSERT INTO #entity_table_name#
-  (
-    #key_column#
-    ,[LoadDate]
-  #end_date_column#
-    ,[RecordSource]
-  #hash_diff_column#
-  #columns#
-  )
-  VALUES
-  (
-    CONVERT(#data_type_hash_key#, ''''#default_hash_key#'''')
-    ,''''#date_range_start#''''
-  #end_date_value#
-    ,''''SYSTEM''''
-  #hash_diff_value#
-  #values#
-  );
-'';
-
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
+DECLARE @Stmt nvarchar(MAX) = ''#body#'';
 EXEC sys.sp_executesql @Stmt;
 '
-    ,@TemplateColumns nvarchar(MAX) = '  ,[#column_name#]' + CHAR(13) + CHAR(10)
-	  ,@TemplateValues nvarchar(MAX) = '  ,#column_value#' + CHAR(13) + CHAR(10)
-	  ,@Columns nvarchar(MAX)
-	  ,@Values nvarchar(MAX)
-    ,@Database NVARCHAR(50);
+    ,@TemplateColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('EDWGhostRecordInsertProc_column_names'), '''', ''''''))
+	  ,@TemplateValues NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('EDWGhostRecordInsertProc_column_values'), '''', ''''''))
+	  ,@Columns NVARCHAR(MAX)
+	  ,@Values NVARCHAR(MAX)
+    ,@Database NVARCHAR(50)
+    ,@Sql NVARCHAR(MAX)
+    ,@SqlDrop NVARCHAR(MAX);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#edw_schema#')
+        , '#object_name#', '[GhostRecordInsert_#entity_type#_#entity_name#]')
+      , '#object_type#', 'PROCEDURE'
+    );
+
+  SET @Template = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('EDWGhostRecordInsertProc'), '''', ''''''))
 
   SET @Columns = (
     SELECT REPLACE(@TemplateColumns, '#column_name#', AttributeName)
@@ -5648,7 +5484,7 @@ EXEC sys.sp_executesql @Stmt;
   )
 
   -- Replace Placeholders
-  SET @SqlDrop = REPLACE(@SqlDrop, '#meta_db#', meta.MetaDbName());
+  SET @SqlDrop = REPLACE(@TemplateDrop, '#meta_db#', meta.MetaDbName());
   SET @SqlDrop = REPLACE(@SqlDrop, '#edw_db#', meta.WarehouseDbName());
   SET @SqlDrop = REPLACE(@SqlDrop, '#staging_db#', meta.StagingDbName());
   SET @SqlDrop = REPLACE(@SqlDrop, '#entity_prefix#', CASE meta.EntityTypeId(@EntityId) WHEN 'Sat' THEN 'tbl_' ELSE '' END);
@@ -5667,13 +5503,13 @@ EXEC sys.sp_executesql @Stmt;
 	  ,@SqlDrop
 	  ,@PrintOnly;
 
-  SET @Sql = REPLACE(@Sql, '#entity_type#', meta.EntityTypeId(@EntityId));
+  SET @Sql = REPLACE(@Template, '#entity_type#', meta.EntityTypeId(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_name#', meta.EntityName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_table_name#', meta.[EntityTableName](@EntityId));
-  SET @Sql = REPLACE(@Sql, '#columns#', @Columns);
-  SET @Sql = REPLACE(@Sql, '#values#', @Values);
+  SET @Sql = REPLACE(@Sql, '#column_names#', @Columns);
+  SET @Sql = REPLACE(@Sql, '#column_values#', @Values);
   SET @Sql = REPLACE(@Sql, '#key_column#', meta.EntityKeyColumn(@EntityId));
-  SET @Sql = REPLACE(@Sql, '#end_date_column#', CASE WHEN meta.EntityTypeId(@EntityId) = 'Sat' THEN '  ,[LoadEndDate]' ELSE '' END);
+  SET @Sql = REPLACE(@Sql, '#load_end_date_column#', CASE WHEN meta.EntityTypeId(@EntityId) = 'Sat' THEN '  ,[LoadEndDate]' ELSE '' END);
   SET @Sql = REPLACE(@Sql, '#end_date_value#', CASE WHEN meta.EntityTypeId(@EntityId) = 'Sat' THEN '  ,''''#date_range_end#''''' ELSE '' END);
   SET @Sql = REPLACE(@Sql, '#hash_diff_column#', CASE WHEN meta.EntityTypeId(@EntityId) = 'Sat' THEN '  ,[HashDiff]' ELSE '' END);
   SET @Sql = REPLACE(@Sql, '#hash_diff_value#', CASE WHEN meta.EntityTypeId(@EntityId) = 'Sat' THEN '  ,CONVERT(#data_type_hash_key#, ''''#default_hash_key#'''')' ELSE '' END);
@@ -5713,22 +5549,25 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#biz_schema#'', @ObjectName = ''[#entity_type#_#entity_name#]'', @ObjectType = ''TABLE'', @PrintOnly = #printonly#;
-'
-    ,@Template nvarchar(MAX) = '
-CREATE TABLE #entity_table_name# (
-  [SnapshotDate] [datetime2] NOT NULL
-#key_columns#
-#columns#
-) ON #filegroup_data#;
-'
-    ,@TemplateKeyColumns nvarchar(MAX) = '  ,#referenced_key_column# #data_type_hash_key# NOT NULL' + CHAR(13) + CHAR(10)
-    ,@TemplateColumns nvarchar(MAX) = '  ,[#referenced_entity_name#_#referenced_column#] #data_type# NOT NULL' + CHAR(13) + CHAR(10)
-	  ,@Sql nvarchar(MAX)
-	  ,@KeyColumns nvarchar(MAX)
-    ,@Columns nvarchar(MAX)
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = (SELECT meta.TemplateText('BizBridgeTable'))
+    ,@TemplateKeyColumns NVARCHAR(MAX) = (SELECT meta.TemplateText('BizBridgeTable_key_columns'))
+    ,@TemplateColumns NVARCHAR(MAX) = (SELECT meta.TemplateText('BizBridgeTable_column_names'))
+	  ,@Sql NVARCHAR(MAX)
+	  ,@KeyColumns NVARCHAR(MAX)
+    ,@Columns NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#biz_schema#')
+        , '#object_name#', '[#entity_type#_#entity_name#]')
+      , '#object_type#', 'TABLE'
+    );
 
   -- Search for columns
   SET @KeyColumns = (
@@ -5774,7 +5613,7 @@ CREATE TABLE #entity_table_name# (
   SET @Sql = REPLACE(@Sql, '#entity_name#', meta.EntityName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#entity_table_name#', meta.EntityTableName(@EntityId));
   SET @Sql = REPLACE(@Sql, '#key_columns#', @KeyColumns);
-  SET @Sql = REPLACE(@Sql, '#columns#', ISNULL(@Columns, ''));
+  SET @Sql = REPLACE(@Sql, '#column_names#', ISNULL(@Columns, ''));
   SET @Sql = REPLACE(@Sql, '#data_type_hash_key#', meta.SqlDataTypeHashKey());
   SET @Sql = REPLACE(@Sql, '#biz_schema#', meta.WarehouseBusinessSchema());
   SET @Sql = REPLACE(@Sql, '#filegroup_data#', CASE meta.PartitioningTypeId(@EntityId) WHEN 'N' THEN meta.FileGroupData() ELSE CONCAT(meta.PartitionSchemeData(@EntityId), '([SnapshotDate])') END);
@@ -5810,32 +5649,8 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @Template nvarchar(MAX) = '
-IF NOT EXISTS
-(
-  SELECT *
-  FROM sys.databases
-  WHERE [name] = ''#staging_db_no_brackets#''
-)
-  CREATE DATABASE #staging_db#
-  ON PRIMARY 
-  (NAME = N''#staging_db_no_brackets#'', FILENAME = N''#physical_filename_staging#'')
-  LOG ON 
-  (NAME = N''#staging_db_no_brackets#_log'', FILENAME = N''#physical_filename_staging_log#'');
-
-IF NOT EXISTS
-(
-  SELECT *
-  FROM sys.databases
-  WHERE [name] = ''#edw_db_no_brackets#''
-)
-  CREATE DATABASE #edw_db#
-  ON PRIMARY 
-  (NAME = N''#edw_db_no_brackets#'', FILENAME = N''#physical_filename_edw#'')
-  LOG ON 
-  (NAME = N''#edw_db_no_brackets#_log'', FILENAME = N''#physical_filename_edw_log#'');
-'
-	  ,@Sql nvarchar(MAX)
+    @Template nvarchar(MAX) = (SELECT meta.TemplateText('Databases'))
+	  ,@Sql NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
 
   -- Replace Placeholders
@@ -5877,80 +5692,7 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @Template nvarchar(MAX) = '
-DECLARE @Stmt nvarchar(MAX);
-
-IF NOT EXISTS
-(
-  SELECT *
-  FROM #staging_db#.sys.filegroups
-  WHERE [name] = ''#filegroup_data_no_brackets#''
-)
-BEGIN
-  USE #staging_db#;
-
-  SET @Stmt = ''
-ALTER DATABASE #staging_db# ADD FILEGROUP #filegroup_data#;
-ALTER DATABASE #staging_db# ADD FILE (NAME = N''''#logical_filename_staging_data#'''', FILENAME = N''''#physical_filename_staging_data#'''') TO FILEGROUP #filegroup_data#;
-ALTER DATABASE #staging_db# MODIFY FILEGROUP #filegroup_data# DEFAULT;
-'';
-
-  EXEC sys.sp_executesql @Stmt;
-END
-
-IF NOT EXISTS
-(
-  SELECT *
-  FROM #staging_db#.sys.filegroups
-  WHERE [name] = ''#filegroup_index_no_brackets#''
-)
-BEGIN
-  USE #staging_db#;
-
-  SET @Stmt = ''
-ALTER DATABASE #staging_db# ADD FILEGROUP #filegroup_index#;
-ALTER DATABASE #staging_db# ADD FILE (NAME = N''''#logical_filename_staging_index#'''', FILENAME = N''''#physical_filename_staging_index#'''') TO FILEGROUP #filegroup_index#;
-'';
-
-  EXEC sys.sp_executesql @Stmt;
-END
-
-IF NOT EXISTS
-(
-  SELECT *
-  FROM #edw_db#.sys.filegroups
-  WHERE [name] = ''#filegroup_data_no_brackets#''
-)
-BEGIN
-  USE #edw_db#;
-
-  SET @Stmt = ''
-ALTER DATABASE #edw_db# ADD FILEGROUP #filegroup_data#;
-ALTER DATABASE #edw_db# ADD FILE (NAME = N''''#logical_filename_edw_data#'''', FILENAME = N''''#physical_filename_edw_data#'''') TO FILEGROUP #filegroup_data#;
-ALTER DATABASE #edw_db# MODIFY FILEGROUP #filegroup_data# DEFAULT;
-'';
-
-  EXEC sys.sp_executesql @Stmt;
-END
-
-IF NOT EXISTS
-(
-  SELECT *
-  FROM #edw_db#.sys.filegroups
-  WHERE [name] = ''#filegroup_index_no_brackets#''
-)
-BEGIN
-  USE #edw_db#;
-
-  SET @Stmt = ''
-ALTER DATABASE #edw_db# ADD FILEGROUP #filegroup_index#;
-ALTER DATABASE #edw_db# ADD FILE (NAME = N''''#logical_filename_edw_index#'''', FILENAME = N''''#physical_filename_edw_index#'''') TO FILEGROUP #filegroup_index#;
-'';
-
-  EXEC sys.sp_executesql @Stmt;
-END
-
-'
+    @Template nvarchar(MAX) = (SELECT meta.TemplateText('FileGroups'))
 	  ,@Sql nvarchar(MAX)
     ,@Database NVARCHAR(50)
     ,@LogicalFileNameStagingData varchar(60) = dbo.NewLogicalFileName(meta.FileGroupData())
@@ -6347,58 +6089,41 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#staging_db#'', @ObjectSchema = ''#staging_schema#'', @ObjectName = ''[#sat_entity_name#]'', @ObjectType = ''VIEW'', @PrintOnly = #printonly#;
-'
-    ,@Template nvarchar(MAX) = '
-DECLARE @Stmt_#id# nvarchar(MAX) = ''
-CREATE VIEW #entity_view_name#
-
-AS
-
-  SELECT
-    [Id]
-    ,#key_column# = 
-	    dbo.GetHash(
-        CONCAT(
-	        ''''''''
-#columns_hash#
-	      )
-      )
-    ,[LoadDate]
-    ,[LoadDateShort] = CONVERT(date, [LoadDate])
-    ,[RecordSource]
-#hash_diff_#id##
-#foreign_hash_keys#
-#key_columns#
-#columns_#id##
-  FROM #entity_table_name#
-'';
-
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
+DECLARE @Stmt_#id# nvarchar(MAX) = ''#body#'';
 EXEC sys.sp_executesql @Stmt_#id#;
 '
-	  ,@TemplateColumns nvarchar(MAX) = '    ,[#column_name#]' + CHAR(13) + CHAR(10)
-	  ,@TemplateHashColumns nvarchar(MAX) = '          ,CONCAT(#column_name#, ''''#hash_delimiter#'''')' + CHAR(13) + CHAR(10)
-	  ,@TemplateHash nvarchar(MAX) = 
-'    ,#key_column# = 
-      dbo.GetHash(
-        CONCAT(
-	        ''''''''
-#columns_hash#
-	      )
-      )' 
-	  ,@SqlDrop nvarchar(MAX)
-    ,@Sql nvarchar(MAX)
-	  ,@KeyColumns nvarchar(MAX)
-	  ,@HashKeyColumns nvarchar(MAX)
-	  ,@Columns nvarchar(MAX)
-	  ,@ColumnsHashDiff nvarchar(MAX)
-	  ,@HashDiff nvarchar(MAX)
-	  ,@ForeignHashKeys nvarchar(MAX) = ''
-    ,@HubId int
-    ,@HashKeySuffix varchar(50)
-    ,@TempHashKeys nvarchar(MAX)
+	  ,@TemplateColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('StagingView_column_names'), '''', ''''''))
+	  ,@TemplateHashColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('StagingView_hash_columns'), '''', ''''''))
+	  ,@TemplateHash NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('StagingView_key_columns'), '''', ''''''))
+	  ,@SqlDrop NVARCHAR(MAX)
+    ,@Sql NVARCHAR(MAX)
+	  ,@KeyColumns NVARCHAR(MAX)
+	  ,@HashKeyColumns NVARCHAR(MAX)
+	  ,@Columns NVARCHAR(MAX)
+	  ,@ColumnsHashDiff NVARCHAR(MAX)
+	  ,@HashDiff NVARCHAR(MAX)
+	  ,@ForeignHashKeys NVARCHAR(MAX) = ''
+    ,@HubId INT
+    ,@HashKeySuffix VARCHAR(50)
+    ,@TempHashKeys NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#staging_db#')
+          , '#schema#', '#staging_schema#')
+        , '#object_name#', '[#sat_entity_name#]')
+      , '#object_type#', 'VIEW'
+    );
+
+  SET @Template = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('StagingView'), '''', ''''''))
+  SET @Template = REPLACE(@Template, '#column_names#', '#column_names_#id##')
+  SET @Template = REPLACE(@Template, '#hash_diff_column#', '#hash_diff_column_#id##')
 
   -- Search for key columns and hash key in Hub
   IF meta.EntityTypeId(@EntityId) = 'Hub'
@@ -6487,7 +6212,7 @@ EXEC sys.sp_executesql @Stmt_#id#;
 		    FOR XML PATH('')
 	    )
 
-	    SET @ForeignHashKeys += REPLACE(REPLACE(@TemplateHash, '#key_column#', meta.EntityKeyColumnWithSuffix(@HubId, meta.CleanSuffix(@HashKeySuffix))), '#columns_hash#', @TempHashKeys) + CHAR(13) + CHAR(10);
+	    SET @ForeignHashKeys += REPLACE(REPLACE(@TemplateHash, '#key_column#', meta.EntityKeyColumnWithSuffix(@HubId, meta.CleanSuffix(@HashKeySuffix))), '#hash_columns#', @TempHashKeys) + CHAR(13) + CHAR(10);
 	  
 	    FETCH NEXT FROM ent INTO @HubId, @HashKeySuffix;
 	  END
@@ -6563,7 +6288,7 @@ EXEC sys.sp_executesql @Stmt_#id#;
 		    FOR XML PATH('')
 	    )
 
-	    SET @ForeignHashKeys = @ForeignHashKeys + REPLACE(REPLACE(@TemplateHash, '#key_column#', meta.EntityKeyColumnMasterDuplicate(@HubId, 1)), '#columns_hash#', @TempHashKeys) + CHAR(13) + CHAR(10);
+	    SET @ForeignHashKeys = @ForeignHashKeys + REPLACE(REPLACE(@TemplateHash, '#key_column#', meta.EntityKeyColumnMasterDuplicate(@HubId, 1)), '#hash_columns#', @TempHashKeys) + CHAR(13) + CHAR(10);
 
       SET @TempHashKeys = (
 	      SELECT REPLACE(@TemplateHashColumns, '#column_name#', REPLACE(meta.ColumnForHash(CONCAT(meta.EntityName(@HubId), '_', meta.AttributeNameMasterDuplicate(AttributeId, 0)), DataTypeId), '''', ''''''))
@@ -6574,7 +6299,7 @@ EXEC sys.sp_executesql @Stmt_#id#;
 		    FOR XML PATH('')
 	    )
 
-	    SET @ForeignHashKeys = @ForeignHashKeys + REPLACE(REPLACE(@TemplateHash, '#key_column#', meta.EntityKeyColumnMasterDuplicate(@HubId, 0)), '#columns_hash#', @TempHashKeys) + CHAR(13) + CHAR(10);
+	    SET @ForeignHashKeys = @ForeignHashKeys + REPLACE(REPLACE(@TemplateHash, '#key_column#', meta.EntityKeyColumnMasterDuplicate(@HubId, 0)), '#hash_columns#', @TempHashKeys) + CHAR(13) + CHAR(10);
 	  
 	    FETCH NEXT FROM ent INTO @HubId;
 	  END
@@ -6625,7 +6350,7 @@ EXEC sys.sp_executesql @Stmt_#id#;
         FOR XML PATH('')
       );
 
-	    SET @Sql = REPLACE(@Sql, replace('#columns_#id##', '#id#', @SatEntityId), @Columns);
+	    SET @Sql = REPLACE(@Sql, replace('#column_names_#id##', '#id#', @SatEntityId), @Columns);
 
 	    -- Replace HashDiff
 	    IF meta.EntityTypeId(@SatEntityId) = 'Sat'
@@ -6639,12 +6364,12 @@ EXEC sys.sp_executesql @Stmt_#id#;
           FOR XML PATH('')
         );
 	    
-		    SET @HashDiff = REPLACE(REPLACE(@TemplateHash, '#key_column#', '[HashDiff]'), '#columns_hash#', @ColumnsHashDiff);
+		    SET @HashDiff = REPLACE(REPLACE(@TemplateHash, '#key_column#', '[HashDiff]'), '#hash_columns#', @ColumnsHashDiff);
 	    END
 	    ELSE
 	      SET @HashDiff = '';
 
-	    SET @Sql = REPLACE(@Sql, replace('#hash_diff_#id##', '#id#', @SatEntityId), @HashDiff);
+	    SET @Sql = REPLACE(@Sql, replace('#hash_diff_column_#id##', '#id#', @SatEntityId), @HashDiff);
 
 	    FETCH NEXT FROM cols INTO @SatEntityId;
 	  END
@@ -6654,7 +6379,7 @@ EXEC sys.sp_executesql @Stmt_#id#;
   ELSE
   BEGIN
 	  SET @SqlDrop = @TemplateDrop;
-    SET @Sql = REPLACE(REPLACE(REPLACE(@Template, '#hash_diff_#id##', ''), '#columns_#id##', ''), '#id#', @EntityId);
+    SET @Sql = REPLACE(REPLACE(REPLACE(@Template, '#hash_diff_column_#id##', ''), '#column_names_#id##', ''), '#id#', @EntityId);
   END
 
   -- Replace Placeholders
@@ -6683,7 +6408,7 @@ EXEC sys.sp_executesql @Stmt_#id#;
   SET @Sql = REPLACE(@Sql, '#entity_table_name#', meta.EntityTableNameStaging(@EntityId));
   SET @Sql = REPLACE(@Sql, '#key_column#', meta.EntityKeyColumn(@EntityId));
   SET @Sql = REPLACE(@Sql, '#key_columns#', @KeyColumns);
-  SET @Sql = REPLACE(@Sql, '#columns_hash#', @HashKeyColumns);
+  SET @Sql = REPLACE(@Sql, '#hash_columns#', @HashKeyColumns);
   SET @Sql = REPLACE(@Sql, '#foreign_hash_keys#', @ForeignHashKeys);
   SET @Sql = REPLACE(@Sql, '#staging_db#', meta.StagingDbName());
   SET @Sql = REPLACE(@Sql, '#staging_schema#', meta.StagingSchema());
@@ -6720,29 +6445,32 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop NVARCHAR(MAX) = '
-EXEC dbo.DropObject @Database = ''#staging_db#'', @ObjectSchema = ''#staging_schema#'', @ObjectName = ''[#sat_entity_name#]'', @ObjectType = ''TABLE'', @PrintOnly = #printonly#;
-'
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
     ,@Template NVARCHAR(MAX) = '
-DECLARE @Stmt_#id# nvarchar(MAX) = ''
-CREATE TABLE #entity_table_name# (
-  [Id] [int] IDENTITY(1,1) NOT NULL
-  ,[LoadDate] [datetime2] NOT NULL
-  ,[RecordSource] [varchar](50) NOT NULL
-#key_columns#
-#columns_#id##
-) ON #filegroup_data#;
-'';
-
+DECLARE @Stmt_#id# nvarchar(MAX) = ''#body#'';
 EXEC sys.sp_executesql @Stmt_#id#;
 '
-    ,@TemplateKeyColumns nvarchar(MAX) = '  ,[#column_name#] #data_type# NOT NULL' + CHAR(13) + CHAR(10)
-	  ,@TemplateColumns nvarchar(MAX) = '  ,[#column_name#] #data_type# NULL' + CHAR(13) + CHAR(10)
-	  ,@SqlDrop nvarchar(MAX)
-    ,@Sql nvarchar(MAX)
-	  ,@KeyColumns nvarchar(MAX)
-	  ,@Columns nvarchar(MAX)
+    ,@TemplateKeyColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('StagingTable_key_columns'), '''', ''''''))
+	  ,@TemplateColumns NVARCHAR(MAX) = (SELECT REPLACE(meta.TemplateText('StagingTable_column_names'), '''', ''''''))
+	  ,@SqlDrop NVARCHAR(MAX)
+    ,@Sql NVARCHAR(MAX)
+	  ,@KeyColumns NVARCHAR(MAX)
+	  ,@Columns NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#staging_db#')
+          , '#schema#', '#staging_schema#')
+        , '#object_name#', '[#sat_entity_name#]')
+      , '#object_type#', 'TABLE'
+    );
+
+  SET @Template = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('StagingTable'), '''', ''''''))
+  SET @Template = REPLACE(@Template, '#column_names#', '#column_names_#id##')
 
   -- Search for key columns in Hub
   IF meta.EntityTypeId(@EntityId) = 'Hub'
@@ -6846,7 +6574,7 @@ EXEC sys.sp_executesql @Stmt_#id#;
         FOR XML PATH('')
       )
 
-	    SET @Sql = REPLACE(@Sql, replace('#columns_#id##', '#id#', @SatEntityId), @Columns);
+	    SET @Sql = REPLACE(@Sql, replace('#column_names_#id##', '#id#', @SatEntityId), @Columns);
 
 	    FETCH NEXT FROM cols INTO @SatEntityId;
 	  END
@@ -6856,7 +6584,7 @@ EXEC sys.sp_executesql @Stmt_#id#;
   ELSE
   BEGIN
     SET @SqlDrop = @TemplateDrop;
-    SET @Sql = REPLACE(REPLACE(@Template, '#columns_#id##', ''), '#id#', @EntityId);
+    SET @Sql = REPLACE(REPLACE(@Template, '#column_names_#id##', ''), '#id#', @EntityId);
   END
 
   -- Replace Placeholders
@@ -6916,30 +6644,26 @@ BEGIN
     RETURN;
 
   DECLARE 
-    @TemplateDrop nvarchar(MAX) = '
-EXEC dbo.DropObject @Database = ''#edw_db#'', @ObjectSchema = ''#edw_schema#'', @ObjectName = ''[UpdateLoadEndDate_#entity_type#_#entity_name#]'', @ObjectType = ''PROCEDURE'', @PrintOnly = #printonly#;
-'
-    ,@Template nvarchar(MAX) = '
-DECLARE @Stmt nvarchar(MAX) = ''
-CREATE PROCEDURE #edw_schema#.[UpdateLoadEndDate_#entity_type#_#entity_name#]
-    @LoadDate DATETIME2
-
-AS
-
-UPDATE Sat
-SET [LoadEndDate] = DATEADD(ss, -1, @LoadDate) 
-FROM #entity_table_name# Sat
-  JOIN #entity_table_name# Sat_current ON Sat.#key_column# = Sat_current.#key_column# 
-    AND Sat.[LoadEndDate] = Sat_current.[LoadEndDate]
-WHERE Sat_current.[LoadDate] = @LoadDate
-  AND Sat.[LoadDate] < @LoadDate
-  AND Sat.[LoadEndDate] = ''''#date_range_end#'''';
-'';   
-
+    @TemplateDrop NVARCHAR(MAX) = (SELECT meta.TemplateText('DropObject'))
+    ,@Template NVARCHAR(MAX) = '
+DECLARE @Stmt nvarchar(MAX) = ''#body#'';   
 EXEC sys.sp_executesql @Stmt;
 '
-    ,@Sql nvarchar(MAX)
+    ,@Sql NVARCHAR(MAX)
     ,@Database NVARCHAR(50);
+
+  SET @TemplateDrop = 
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(@TemplateDrop
+            , '#db_name#', '#edw_db#')
+          , '#schema#', '#edw_schema#')
+        , '#object_name#', '[UpdateLoadEndDate_#entity_type#_#entity_name#]')
+      , '#object_type#', 'PROCEDURE'
+    );
+
+  SET @Template = REPLACE(@Template, '#body#', REPLACE(meta.TemplateText('EDWUpdateLoadEndDateProc'), '''', ''''''))
 
   -- Replace Placeholders
   SET @TemplateDrop = REPLACE(@TemplateDrop, '#meta_db#', meta.MetaDbName());
@@ -7469,6 +7193,1679 @@ THEN
   INSERT ([StorageTypeId], [StorageTypeName], [LastUpdateTime])
   VALUES (s.[StorageTypeId], s.[StorageTypeName], s.[LastUpdateTime]);
 GO
+
+/* [meta].[Template] */
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizBridgeTable')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizBridgeTable'
+    ,'Bridge table creation script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE TABLE #entity_table_name# (
+  [SnapshotDate] [datetime2] NOT NULL
+#key_columns#
+#column_names#
+) ON #filegroup_data#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizBridgeTable_key_columns')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizBridgeTable_key_columns'
+    ,'Bridge table creation script: key columns'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,#referenced_key_column# #data_type_hash_key# NOT NULL
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizBridgeTable_column_names')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizBridgeTable_column_names'
+    ,'Bridge table creation script: column names'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[#referenced_entity_name#_#referenced_column#] #data_type# NOT NULL
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizPitTable')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizPitTable'
+    ,'Point In Time table creation script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE TABLE #entity_table_name# (
+  #key_column# #data_type_hash_key# NOT NULL
+  ,#referenced_key_column# #data_type_hash_key# NOT NULL
+  ,[SnapshotDate] [datetime2] NOT NULL
+  ,[SnapshotDateShort] [date] NULL
+#column_names#
+) ON #filegroup_data#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizPitTable_column_names')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizPitTable_column_names'
+    ,'Point In Time table creation script: column names'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+  ,[#referenced_entity_name#_#referenced_key_column#] #data_type_hash_key# NOT NULL
+  ,[#referenced_entity_name#_LoadDate] [datetime2] NOT NULL
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWTable')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWTable'
+    ,'EDW entity creation script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE TABLE #entity_table_name# (
+  #key_column# #data_type_hash_key# NOT NULL
+  ,[LoadDate] [datetime2] NOT NULL
+#load_date_short_column#
+#load_end_date_column#
+  ,[RecordSource] [varchar](50) NOT NULL
+#hash_diff_column#
+#column_names#
+) ON #filegroup_data#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWTable_key_columns')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWTable_key_columns'
+    ,'EDW entity creation script: key columns'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[#column_name#] #data_type# NOT NULL
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWTable_column_names')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWTable_column_names'
+    ,'EDW entity creation script: column names'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[#column_name#] #data_type# NULL
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'LookupErrorIndexes')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'LookupErrorIndexes'
+    ,'Indexes creation script for Lookup Error tables'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name##_##hub_name#_LoadDate] ON #error_schema#.[#entity_type#_#entity_name##_##hub_name#] ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
+ALTER TABLE #error_schema#.[#entity_type#_#entity_name##_##hub_name#] ADD CONSTRAINT [PK_#entity_type#_#entity_name##_##hub_name#] PRIMARY KEY NONCLUSTERED ([Id] ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'TablePartitioning')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'TablePartitioning'
+    ,'Partitioning creation script for entities'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PARTITION FUNCTION #partition_function#([datetime2]) AS RANGE LEFT FOR VALUES (''#date_range_start#'');
+CREATE PARTITION SCHEME #partition_scheme_data# AS PARTITION #partition_function# ALL TO (#filegroup_data#);
+CREATE PARTITION SCHEME #partition_scheme_index# AS PARTITION #partition_function# ALL TO (#filegroup_index#);
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'Databases')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'Databases'
+    ,'Deployment script for staging and EDW databases'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+IF NOT EXISTS
+(
+  SELECT *
+  FROM sys.databases
+  WHERE [name] = ''#staging_db_no_brackets#''
+)
+  CREATE DATABASE #staging_db#
+  ON PRIMARY 
+  (NAME = N''#staging_db_no_brackets#'', FILENAME = N''#physical_filename_staging#'')
+  LOG ON 
+  (NAME = N''#staging_db_no_brackets#_log'', FILENAME = N''#physical_filename_staging_log#'');
+
+IF NOT EXISTS
+(
+  SELECT *
+  FROM sys.databases
+  WHERE [name] = ''#edw_db_no_brackets#''
+)
+  CREATE DATABASE #edw_db#
+  ON PRIMARY 
+  (NAME = N''#edw_db_no_brackets#'', FILENAME = N''#physical_filename_edw#'')
+  LOG ON 
+  (NAME = N''#edw_db_no_brackets#_log'', FILENAME = N''#physical_filename_edw_log#'');
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'FileGroups')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'FileGroups'
+    ,'Deployment script for database filegroups'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+DECLARE @Stmt nvarchar(MAX);
+
+IF NOT EXISTS
+(
+  SELECT *
+  FROM #staging_db#.sys.filegroups
+  WHERE [name] = ''#filegroup_data_no_brackets#''
+)
+BEGIN
+  USE #staging_db#;
+
+  SET @Stmt = ''
+ALTER DATABASE #staging_db# ADD FILEGROUP #filegroup_data#;
+ALTER DATABASE #staging_db# ADD FILE (NAME = N''''#logical_filename_staging_data#'''', FILENAME = N''''#physical_filename_staging_data#'''') TO FILEGROUP #filegroup_data#;
+ALTER DATABASE #staging_db# MODIFY FILEGROUP #filegroup_data# DEFAULT;
+'';
+
+  EXEC sys.sp_executesql @Stmt;
+END
+
+IF NOT EXISTS
+(
+  SELECT *
+  FROM #staging_db#.sys.filegroups
+  WHERE [name] = ''#filegroup_index_no_brackets#''
+)
+BEGIN
+  USE #staging_db#;
+
+  SET @Stmt = ''
+ALTER DATABASE #staging_db# ADD FILEGROUP #filegroup_index#;
+ALTER DATABASE #staging_db# ADD FILE (NAME = N''''#logical_filename_staging_index#'''', FILENAME = N''''#physical_filename_staging_index#'''') TO FILEGROUP #filegroup_index#;
+'';
+
+  EXEC sys.sp_executesql @Stmt;
+END
+
+IF NOT EXISTS
+(
+  SELECT *
+  FROM #edw_db#.sys.filegroups
+  WHERE [name] = ''#filegroup_data_no_brackets#''
+)
+BEGIN
+  USE #edw_db#;
+
+  SET @Stmt = ''
+ALTER DATABASE #edw_db# ADD FILEGROUP #filegroup_data#;
+ALTER DATABASE #edw_db# ADD FILE (NAME = N''''#logical_filename_edw_data#'''', FILENAME = N''''#physical_filename_edw_data#'''') TO FILEGROUP #filegroup_data#;
+ALTER DATABASE #edw_db# MODIFY FILEGROUP #filegroup_data# DEFAULT;
+'';
+
+  EXEC sys.sp_executesql @Stmt;
+END
+
+IF NOT EXISTS
+(
+  SELECT *
+  FROM #edw_db#.sys.filegroups
+  WHERE [name] = ''#filegroup_index_no_brackets#''
+)
+BEGIN
+  USE #edw_db#;
+
+  SET @Stmt = ''
+ALTER DATABASE #edw_db# ADD FILEGROUP #filegroup_index#;
+ALTER DATABASE #edw_db# ADD FILE (NAME = N''''#logical_filename_edw_index#'''', FILENAME = N''''#physical_filename_edw_index#'''') TO FILEGROUP #filegroup_index#;
+'';
+
+  EXEC sys.sp_executesql @Stmt;
+END
+
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'Schemata')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'Schemata'
+    ,'Deployment script for database schemas'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+DECLARE @Stmt nvarchar(MAX);
+
+IF NOT EXISTS
+(
+  SELECT *
+  FROM INFORMATION_SCHEMA.SCHEMATA
+  WHERE SCHEMA_NAME = ''#schema_no_brackets#''
+)
+BEGIN
+  SET @Stmt = ''
+CREATE SCHEMA #schema# AUTHORIZATION [dbo];
+'';
+
+  EXEC sys.sp_executesql @Stmt;
+END
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'DatabaseOptions')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'DatabaseOptions'
+    ,'Deployment script for database options'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+ALTER DATABASE #db_name# SET AUTO_CREATE_STATISTICS ON #incremental_statistics#;
+ALTER DATABASE #db_name# SET READ_COMMITTED_SNAPSHOT ON WITH NO_WAIT;
+
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWGetPitProc')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWGetPitProc'
+    ,'Creation script for populating PIT procedure'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PROCEDURE #edw_schema#.[Get_#entity_type#_#entity_name#]
+  @SnapshotDate datetime2
+
+WITH RECOMPILE
+AS
+
+SELECT 
+  #key_column# = 
+    dbo.GetHash(
+      CONCAT(
+	      ''''
+#hash_columns#
+	    )
+    )
+  ,#referenced_entity_type#.#referenced_key_column#
+  ,[SnapshotDate] = @SnapshotDate
+  ,[SnapshotDateShort] = CONVERT(date, @SnapshotDate)
+#column_names#
+FROM #referenced_entity_table_name# #referenced_entity_type#
+#join_conditions#
+ORDER BY #referenced_entity_type#.#referenced_key_column#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWGetPitProc_column_names')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWGetPitProc_column_names'
+    ,'Creation script for populating PIT procedure: column names'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+  ,[#referenced_entity_name#_#key_column#] = ISNULL(#referenced_entity_type#_#referenced_entity_id#.[#key_column#], REPLICATE(''0'', #hash_type_len#))
+  ,[#referenced_entity_name#_LoadDate] = ISNULL(#referenced_entity_type#_#referenced_entity_id#.[LoadDate], ''#date_range_start#'')'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWGetPitProc_columns_hash')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWGetPitProc_columns_hash'
+    ,'Creation script for populating PIT procedure: hash columns'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'        ,CONCAT(#column_name#, ''#hash_delimiter#'')
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWGetPitProc_join_conditions')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWGetPitProc_join_conditions'
+    ,'Creation script for populating PIT procedure: join conditions'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+  LEFT JOIN #edw_schema#.[#referenced_entity_type#_#referenced_entity_name#] #referenced_entity_type#_#referenced_entity_id# ON #entity_type#.[#key_column#] = #referenced_entity_type#_#referenced_entity_id#.[#key_column#]
+    AND @SnapshotDate BETWEEN #referenced_entity_type#_#referenced_entity_id#.[LoadDate] AND #referenced_entity_type#_#referenced_entity_id#.[LoadEndDate]'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWGhostRecordDeleteProc')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWGhostRecordDeleteProc'
+    ,'Creation script for Ghost Record delete procedure'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PROCEDURE #edw_schema#.[GhostRecordDelete_#entity_type#_#entity_name#]
+
+AS
+
+SET NOCOUNT ON;
+
+DELETE FROM #entity_table_name# WHERE #key_column# = CONVERT(#data_type_hash_key#, ''#default_hash_key#'');
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWGhostRecordInsertProc')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWGhostRecordInsertProc'
+    ,'Creation script for Ghost Record insert procedure'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PROCEDURE #edw_schema#.[GhostRecordInsert_#entity_type#_#entity_name#]
+
+AS
+
+SET NOCOUNT ON;
+
+IF NOT EXISTS 
+(
+  SELECT *
+  FROM #entity_table_name# 
+  WHERE #key_column# = CONVERT(#data_type_hash_key#, ''#default_hash_key#'')
+)
+  INSERT INTO #entity_table_name#
+  (
+    #key_column#
+    ,[LoadDate]
+  #load_end_date_column#
+    ,[RecordSource]
+  #hash_diff_column#
+  #column_names#
+  )
+  VALUES
+  (
+    CONVERT(#data_type_hash_key#, ''#default_hash_key#'')
+    ,''#date_range_start#''
+  #end_date_value#
+    ,''SYSTEM''
+  #hash_diff_value#
+  #column_values#
+  );
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWGhostRecordInsertProc_column_names')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWGhostRecordInsertProc_column_names'
+    ,'Creation script for Ghost Record insert procedure: column names'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[#column_name#]
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWGhostRecordInsertProc_column_values')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWGhostRecordInsertProc_column_values'
+    ,'Creation script for Ghost Record insert procedure: column values'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,#column_value#
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWUpdateLoadEndDateProc')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWUpdateLoadEndDateProc'
+    ,'Creation script for Upload End Date procedure'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PROCEDURE #edw_schema#.[UpdateLoadEndDate_#entity_type#_#entity_name#]
+    @LoadDate DATETIME2
+
+AS
+
+UPDATE Sat
+SET [LoadEndDate] = DATEADD(ss, -1, @LoadDate) 
+FROM #entity_table_name# Sat
+  JOIN #entity_table_name# Sat_current ON Sat.#key_column# = Sat_current.#key_column# 
+    AND Sat.[LoadEndDate] = Sat_current.[LoadEndDate]
+WHERE Sat_current.[LoadDate] = @LoadDate
+  AND Sat.[LoadDate] < @LoadDate
+  AND Sat.[LoadEndDate] = ''#date_range_end#'';
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'FinalizeEntityProc_partitioned')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'FinalizeEntityProc_partitioned'
+    ,'Creation script for Finalize entity procedure (partitioned)'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PROCEDURE #schema#.[FinalizeEntity_#entity_type#_#entity_name#]
+    @LoadDate DATETIME2
+
+AS
+
+DECLARE @Sql NVARCHAR(MAX) = ''
+UPDATE STATISTICS #entity_table_name# WITH RESAMPLE ON PARTITIONS(#partition_number#), ALL, NORECOMPUTE;
+'';
+
+SET @Sql = REPLACE(@Sql, ''#partition_number#'', $PARTITION.#partition_function#(@LoadDate));
+
+EXEC sys.sp_executesql @Sql;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'FinalizeEntityProc_nonpartitioned')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'FinalizeEntityProc_nonpartitioned'
+    ,'Creation script for Finalize entity procedure (non-partitioned)'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PROCEDURE #schema#.[FinalizeEntity_#entity_type#_#entity_name#]
+    @LoadDate DATETIME2
+
+AS
+
+UPDATE STATISTICS #entity_table_name# WITH ALL, NORECOMPUTE;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'InitializeEntityProc_partitioned')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'InitializeEntityProc_partitioned'
+    ,'Creation script for Initialize entity procedure (partitioned)'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PROCEDURE #schema#.[InitializeEntity_#entity_type#_#entity_name#]
+    @LoadDate DATETIME2
+
+AS
+
+DECLARE @PartitionDate #date_data_type# = #date_value#;
+
+IF NOT EXISTS (
+  SELECT *
+  FROM sys.partition_range_values prv
+    JOIN sys.partition_functions pf ON prv.function_id = pf.function_id
+  WHERE pf.name = ''#partition_function_no_brackets#''
+    AND prv.value = @PartitionDate
+)
+BEGIN
+  ALTER PARTITION SCHEME #partition_scheme_data# NEXT USED #filegroup_data#;
+  ALTER PARTITION SCHEME #partition_scheme_index# NEXT USED #filegroup_index#;
+  ALTER PARTITION FUNCTION #partition_function#() SPLIT RANGE (@PartitionDate);
+END
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'InitializeEntityProc_nonpartitioned')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'InitializeEntityProc_nonpartitioned'
+    ,'Creation script for Initialize entity procedure (non-partitioned)'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PROCEDURE #schema#.[InitializeEntity_#entity_type#_#entity_name#]
+    @LoadDate DATETIME2
+
+AS
+
+RETURN
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWView')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWView'
+    ,'EDW entity view creation script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE VIEW #edw_schema#.[#entity_type#_#entity_name#]
+
+AS
+
+SELECT
+  #key_column#
+  ,[LoadDate]
+#load_end_date_column#
+  ,[RecordSource]
+#hash_diff_column#
+#column_names#
+FROM #entity_table_name#
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWView_column_names')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWView_column_names'
+    ,'EDW entity view creation script: column names'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[#column_name#]
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWView_virtualized_load_end_date_column')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWView_virtualized_load_end_date_column'
+    ,'EDW entity view creation script: virtualized load end date column'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[LoadEndDate] = ISNULL(DATEADD(ss, -1, LAG([LoadDate]) OVER(PARTITION BY #key_column# ORDER BY [LoadDate] DESC)), ''#date_range_end#'')
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'LookupErrorTable')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'LookupErrorTable'
+    ,'Lookup error table creation script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE TABLE #error_schema#.[#entity_type#_#entity_name##_##hub_name#] (
+  [Id] [bigint] IDENTITY(1,1) NOT NULL
+  ,#key_column# #key_datatype# NOT NULL
+  ,[LoadDate] [datetime2](7) NOT NULL
+  ,[RecordSource] [varchar](50) NOT NULL
+#key_or_hashkey_columns#
+) ON #filegroup_data#
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'LookupErrorTable_key_columns')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'LookupErrorTable_key_columns'
+    ,'Lookup error table creation script: key columns'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[#column_name#] #data_type# NOT NULL
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'LookupErrorTable_columns_hash')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'LookupErrorTable_columns_hash'
+    ,'Lookup error table creation script: hash columns'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,#key_column# #key_datatype# NOT NULL'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'StagingTable')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'StagingTable'
+    ,'Staging table creation script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE TABLE #entity_table_name# (
+  [Id] [int] IDENTITY(1,1) NOT NULL
+  ,[LoadDate] [datetime2] NOT NULL
+  ,[RecordSource] [varchar](50) NOT NULL
+#key_columns#
+#column_names#
+) ON #filegroup_data#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'StagingTable_key_columns')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'StagingTable_key_columns'
+    ,'Staging table creation script: key columns'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[#column_name#] #data_type# NOT NULL
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'StagingTable_column_names')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'StagingTable_column_names'
+    ,'Staging table creation script: column names'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[#column_name#] #data_type# NULL
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'StagingView')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'StagingView'
+    ,'Staging view creation script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE VIEW #entity_view_name#
+
+AS
+
+SELECT
+  [Id]
+  ,#key_column# = 
+    dbo.GetHash(
+      CONCAT(
+       ''''
+#hash_columns#
+      )
+    )
+  ,[LoadDate]
+  ,[LoadDateShort] = CONVERT(date, [LoadDate])
+  ,[RecordSource]
+#hash_diff_column#
+#foreign_hash_keys#
+#key_columns#
+#column_names#
+FROM #entity_table_name#
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'StagingView_column_names')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'StagingView_column_names'
+    ,'Staging view creation script: column names'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,[#column_name#]
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'StagingView_hash_columns')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'StagingView_hash_columns'
+    ,'Staging view creation script: hash columns'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'        ,CONCAT(#column_name#, ''#hash_delimiter#'')
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'StagingView_key_columns')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'StagingView_key_columns'
+    ,'Staging view creation script: key columns'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'  ,#key_column# = 
+    dbo.GetHash(
+      CONCAT(
+	      ''''
+#hash_columns#
+	    )
+    )'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'Utilities_get_hash_actual')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'Utilities_get_hash_actual'
+    ,'Utility procedure creation script: GetHash (current)'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE FUNCTION [dbo].[GetHash]
+(
+	@value NVARCHAR(MAX)
+)
+RETURNS #data_type_hash_key#
+AS
+BEGIN
+	RETURN CONVERT(#data_type_hash_key#, HASHBYTES(''#hash_algorithm#'', UPPER(@value)), 2)
+END
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'Utilities_get_hash_legacy')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'Utilities_get_hash_legacy'
+    ,'Utility procedure creation script: GetHash (legacy)'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE FUNCTION [dbo].[GetHash]
+(
+	@value VARCHAR(8000)
+)
+RETURNS #data_type_hash_key#
+AS
+BEGIN
+	RETURN CONVERT(#data_type_hash_key#, HASHBYTES(''#hash_algorithm#'', UPPER(@value)), 2)
+END
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'Utilities_insert_ghost_records')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'Utilities_insert_ghost_records'
+    ,'Utility procedure creation script: InsertGhostRecords'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE PROCEDURE [dbo].[InsertGhostRecords]
+  @Force bit = 0
+
+AS
+
+SET NOCOUNT ON;
+
+DECLARE 
+  @TemplateInsert nvarchar(MAX) = ''
+EXEC #schema#.#ghost_insert_proc_name#;
+''
+  ,@TemplateDelete nvarchar(MAX) = ''
+EXEC #schema#.#ghost_delete_proc_name#;
+''
+  ,@Sql nvarchar(MAX);
+
+SET @Sql = (
+  SELECT REPLACE(REPLACE(@TemplateInsert, ''#schema#'', SCHEMA_NAME(schema_id)), ''#ghost_insert_proc_name#'', [name])
+  FROM sys.objects
+  WHERE [type] = ''P''
+    AND [name] LIKE ''GhostRecordInsert%''
+  ORDER BY [name]
+  FOR XML PATH('''')
+)
+
+IF @Force = 1
+  SET @Sql = (
+    SELECT REPLACE(REPLACE(@TemplateDelete, ''#schema#'', SCHEMA_NAME(schema_id)), ''#ghost_delete_proc_name#'', [name])
+    FROM sys.objects
+    WHERE [type] = ''P''
+      AND [name] LIKE ''GhostRecordDelete%''
+    ORDER BY [name] DESC
+    FOR XML PATH('''')
+  )
+	+ @Sql;
+
+SET @Sql = REPLACE(@Sql, ''&#x0D;'', '''');
+
+IF (@Sql IS NOT NULL)
+    EXEC sys.sp_executesql @Sql;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'IndexOptionsRowStore_partitioned')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'IndexOptionsRowStore_partitioned'
+    ,'Options for RowStore partitioned indexes'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'DATA_COMPRESSION = #rowstore_compression#, STATISTICS_INCREMENTAL = ON'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'IndexOptionsRowStore_nonpartitioned')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'IndexOptionsRowStore_nonpartitioned'
+    ,'Options for RowStore non-partitioned indexes'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'DATA_COMPRESSION = #rowstore_compression#'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizIndexesColumnRowStore_pit')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizIndexesColumnRowStore_pit'
+    ,'Index creation script for ColumnStore/RowStore: PIT table'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
+CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_SnapshotDate] ON #entity_table_name# ([SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_index#;
+CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#referenced_key_column# ASC, [SnapshotDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizIndexesColumnRowStore_bridge')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizIndexesColumnRowStore_bridge'
+    ,'Index creation script for ColumnStore/RowStore: Bridge table'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
+CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_SnapshotDate] ON #entity_table_name# ([SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_index#;
+CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#referenced_key_column# ASC, [SnapshotDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizIndexesColumnRowStore_common')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizIndexesColumnRowStore_common'
+    ,'Index creation script for ColumnStore/RowStore: common script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_#referenced_entity_name#] ON #entity_table_name# ([#referenced_entity_name#_#referenced_key_column#] ASC, [#referenced_entity_name#_LoadDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_#referenced_key_column#] DEFAULT (''#default_hash_key#'') FOR [#referenced_entity_name#_#referenced_key_column#];
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_LoadDate] DEFAULT (''#date_range_start#'') FOR [#referenced_entity_name#_LoadDate];
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizIndexesColumnStore_all')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizIndexesColumnStore_all'
+    ,'Index creation script for ColumnStore: all tables'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizIndexesColumnStore_common')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizIndexesColumnStore_common'
+    ,'Index creation script for ColumnStore: common script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_#referenced_key_column#] DEFAULT (''#default_hash_key#'') FOR [#referenced_entity_name#_#referenced_key_column#];
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_LoadDate] DEFAULT (''#date_range_start#'') FOR [#referenced_entity_name#_LoadDate];
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizIndexesRowStore_pit')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizIndexesRowStore_pit'
+    ,'Index creation script for RowStore: PIT table'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_SnapshotDate] ON #entity_table_name# ([SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_data#;
+CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#referenced_key_column# ASC, [SnapshotDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizIndexesRowStore_bridge')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizIndexesRowStore_bridge'
+    ,'Index creation script for RowStore: Bridge table'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_SnapshotDate] ON #entity_table_name# ([SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_data#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_columns# [SnapshotDate] ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'BizIndexesRowStore_common')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'BizIndexesRowStore_common'
+    ,'Index creation script for RowStore: common script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_#referenced_entity_name#] ON #entity_table_name# ([#referenced_entity_name#_#referenced_key_column#] ASC, [#referenced_entity_name#_LoadDate] ASC) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_#referenced_key_column#] DEFAULT (''#default_hash_key#'') FOR [#referenced_entity_name#_#referenced_key_column#];
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [DF_#entity_type#_#entity_name#_#referenced_entity_name#_LoadDate] DEFAULT (''#date_range_start#'') FOR [#referenced_entity_name#_LoadDate];
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesColumnRowStore_hub_link')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesColumnRowStore_hub_link'
+    ,'Index creation script for ColumnStore/RowStore (raw vault): hub & link tables'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
+CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_index#;
+CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#column_names#) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesColumnRowStore_sat')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesColumnRowStore_sat'
+    ,'Index creation script for ColumnStore/RowStore (raw vault): satellite tables'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
+CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
+CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadEndDate] ON #entity_table_name# (LoadEndDate, #key_column#) INCLUDE (HashDiff) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC, [LoadDate] ASC) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadDate] CHECK (([LoadDate] <= [LoadEndDate]));
+ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadEndDate] DEFAULT (''#date_range_end#'') FOR [LoadEndDate];
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesColumnRowStore_tsat')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesColumnRowStore_tsat'
+    ,'Index creation script for ColumnStore/RowStore (raw vault): non-historized satellite tables'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
+CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate], #key_column#) WITH (#index_options#) ON #filegroup_data#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC, [LoadDate] ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesColumnRowStore_fk')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesColumnRowStore_fk'
+    ,'Index creation script for ColumnStore/RowStore (raw vault): foreign keys'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+ALTER TABLE #entity_table_name# WITH #fk_check# ADD CONSTRAINT [FK_#entity_type#_#entity_name#_#referenced_entity_type#_#referenced_entity_name##column_suffix#] FOREIGN KEY (#referencing_key_column#) REFERENCES #referenced_entity_table_name# (#referenced_key_column#);
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesColumnStore_all')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesColumnStore_all'
+    ,'Index creation script for ColumnStore (raw vault): all tables'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED COLUMNSTORE INDEX [CCI_#entity_type#_#entity_name#] ON #entity_table_name# ON #filegroup_data#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesColumnStore_pk')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesColumnStore_pk'
+    ,'Index creation script for ColumnStore (raw vault): primary key'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesColumnStore_fk')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesColumnStore_fk'
+    ,'Index creation script for ColumnStore (raw vault): foreign keys'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+ALTER TABLE #entity_table_name# WITH #fk_check# ADD CONSTRAINT [FK_#entity_type#_#entity_name#_#referenced_entity_type#_#referenced_entity_name##column_suffix#] FOREIGN KEY (#referencing_key_column#) REFERENCES #referenced_entity_table_name# (#referenced_key_column#);
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesColumnStore_check')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesColumnStore_check'
+    ,'Index creation script for ColumnStore (raw vault): check constraints'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadDate] CHECK (([LoadDate] <= [LoadEndDate]));
+ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadEndDate] DEFAULT (''#date_range_end#'') FOR [LoadEndDate];
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesRowStore_hub_link')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesRowStore_hub_link'
+    ,'Index creation script for RowStore (raw vault): hub & link tables'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
+CREATE UNIQUE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_Key] ON #entity_table_name# (#column_names#) INCLUDE (#key_column#) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesRowStore_sat')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesRowStore_sat'
+    ,'Index creation script for RowStore (raw vault): satellite tables'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
+CREATE NONCLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadEndDate] ON #entity_table_name# (LoadEndDate, #key_column#) INCLUDE (HashDiff) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC, [LoadDate] ASC) WITH (#index_options#) ON #filegroup_index#;
+ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadDate] CHECK (([LoadDate] <= [LoadEndDate]));
+ALTER TABLE #entity_table_name# WITH CHECK ADD CONSTRAINT [CK_#entity_type#_#entity_name#_LoadEndDate] DEFAULT (''#date_range_end#'') FOR [LoadEndDate];
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesRowStore_tsat')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesRowStore_tsat'
+    ,'Index creation script for RowStore (raw vault): non-historized satellite tables'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+CREATE CLUSTERED INDEX [IX_#entity_type#_#entity_name#_LoadDate] ON #entity_table_name# ([LoadDate]) WITH (#index_options#) ON #filegroup_data#;
+ALTER TABLE #entity_table_name# ADD CONSTRAINT [PK_#entity_type#_#entity_name#] PRIMARY KEY NONCLUSTERED (#key_column# ASC, [LoadDate] ASC) WITH (#index_options#) ON #filegroup_index#;
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'EDWIndexesRowStore_fk')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'EDWIndexesRowStore_fk'
+    ,'Index creation script for RowStore (raw vault): foreign keys'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+ALTER TABLE #entity_table_name# WITH #fk_check# ADD CONSTRAINT [FK_#entity_type#_#entity_name#_#referenced_entity_type#_#referenced_entity_name##column_suffix#] FOREIGN KEY (#referencing_key_column#) REFERENCES #referenced_entity_table_name# (#referenced_key_column#);
+'
+  );
+
+IF NOT EXISTS (SELECT 1 FROM [meta].[Template] WHERE [TemplateId] = 'DropObject')
+  INSERT INTO [meta].[Template]
+  (
+    [TemplateId]
+    ,[TemplateDescription]
+    ,[TemplateAttribute]
+    ,[LastUpdateTime]
+    ,[TemplateText]
+  )
+  VALUES
+  (
+    'DropObject'
+    ,'Drop object script'
+    ,'Protected'
+    ,meta.DateRangeStart()
+    ,'
+EXEC dbo.DropObject @Database = ''#db_name#'', @ObjectSchema = ''#schema#'', @ObjectName = ''#object_name#'', @ObjectType = ''#object_type#'', @PrintOnly = #printonly#;
+'
+  );
+
 
 /* Validating current configuration */
 PRINT '-- *** Validating current configuration ***';
